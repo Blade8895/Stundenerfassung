@@ -65,7 +65,7 @@ render_header('Dashboard');
     </form>
     <p><strong>Gesamtstunden:</strong> <?= h(format_hours($totalMinutes / 60)) ?></p>
     <div class="table-wrap"><table>
-        <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Pause</th><th>Baustelle</th><th>Notiz</th></tr>
+        <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Pause</th><th>Baustelle</th><th>Notiz</th><th>Stunden</th></tr>
         <?php foreach ($entries as $entry): ?>
         <tr>
             <td><?= h($entry['work_date']) ?></td>
@@ -74,6 +74,7 @@ render_header('Dashboard');
             <td><?= (int) $entry['break_minutes'] ?> Min.</td>
             <td><?= h($entry['project_name']) ?></td>
             <td><?= h((string)$entry['notes']) ?></td>
+            <td><?php $entryMinutes = max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']); echo h(format_hours($entryMinutes / 60)); ?></td>
         </tr>
         <?php endforeach; ?>
     </table></div>
