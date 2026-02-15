@@ -10,7 +10,7 @@ function render_header(string $title): void
     echo '<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>' . h(app_name() . ' - ' . $title) . '</title><link rel="stylesheet" href="style.css"></head><body class="theme-' . h($theme) . '">';
     echo '<header><h2>' . h(app_name()) . '</h2>';
     if ($user) {
-        echo '<nav><a href="dashboard.php">Dashboard</a> | <a href="report.php">Monatsauswertung</a>';
+        echo '<nav><a href="dashboard.php">Dashboard</a>';
         if (is_admin()) {
             echo ' | <a href="admin.php">Admin</a>';
         }

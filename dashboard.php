@@ -15,10 +15,9 @@ $stmt->execute(['user_id' => $user['id']]);
 $projects = $stmt->fetchAll();
 
 $listStmt = db()->prepare(
-    'SELECT te.*, p.name AS project_name, cu.name AS created_by_name
+    'SELECT te.*, p.name AS project_name
      FROM time_entries te
      INNER JOIN projects p ON p.id = te.project_id
-     INNER JOIN users cu ON cu.id = te.created_by_user_id
      WHERE te.user_id = :user_id AND substr(te.work_date,1,7) = :month
      ORDER BY te.work_date DESC, te.start_time DESC'
 );
@@ -31,6 +30,9 @@ foreach ($entries as $entry) {
     $totalMinutes += max(0, $minutes);
 }
 
+$hours = range(0, 23);
+$quarterMinutes = ['00', '15', '30', '45'];
+
 render_header('Dashboard');
 ?>
 <div class="card">
@@ -41,9 +43,27 @@ render_header('Dashboard');
     <form method="post" action="time_entry_save.php">
         <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>">
         <div class="grid">
-            <div><label>Datum</label><input type="date" name="work_date" required value="<?= h(date('Y-m-d')) ?>"></div>
-            <div><label>Von</label><input type="time" name="start_time" required></div>
-            <div><label>Bis</label><input type="time" name="end_time" required></div>
+            <input type="hidden" name="work_date" value="<?= h(date('Y-m-d')) ?>">
+            <div><label>Arbeitstag</label><input value="<?= h(date('d.m.Y')) ?>" readonly></div>
+
+            <div>
+                <label>Von</label>
+                <div class="time-row">
+                    <select data-time-hour="start_time"><?php foreach ($hours as $hour): ?><option value="<?= sprintf('%02d', $hour) ?>"><?= sprintf('%02d', $hour) ?></option><?php endforeach; ?></select>
+                    <select data-time-minute="start_time"><?php foreach ($quarterMinutes as $m): ?><option value="<?= $m ?>"><?= $m ?></option><?php endforeach; ?></select>
+                </div>
+                <input type="hidden" name="start_time" data-time-hidden="start_time" value="08:00">
+            </div>
+
+            <div>
+                <label>Bis</label>
+                <div class="time-row">
+                    <select data-time-hour="end_time"><?php foreach ($hours as $hour): ?><option value="<?= sprintf('%02d', $hour) ?>" <?= $hour === 16 ? 'selected' : '' ?>><?= sprintf('%02d', $hour) ?></option><?php endforeach; ?></select>
+                    <select data-time-minute="end_time"><?php foreach ($quarterMinutes as $m): ?><option value="<?= $m ?>"><?= $m ?></option><?php endforeach; ?></select>
+                </div>
+                <input type="hidden" name="end_time" data-time-hidden="end_time" value="16:00">
+            </div>
+
             <div><label>Pause (Min.)</label><input type="number" name="break_minutes" min="0" value="0" required></div>
             <div><label>Baustelle</label><select name="project_id" required>
                 <option value="">Bitte wählen</option>
@@ -65,8 +85,8 @@ render_header('Dashboard');
         <div style="align-self:end"><button type="submit">Filtern</button></div>
     </form>
     <p><strong>Gesamtstunden:</strong> <?= h(format_hours($totalMinutes / 60)) ?></p>
-    <table>
-        <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Pause</th><th>Baustelle</th><th>Notiz</th><th>Erfasst von</th></tr>
+    <div class="table-wrap"><table>
+        <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Pause</th><th>Baustelle</th><th>Notiz</th><th>Stunden</th></tr>
         <?php foreach ($entries as $entry): ?>
         <tr>
             <td><?= h($entry['work_date']) ?></td>
@@ -75,9 +95,28 @@ render_header('Dashboard');
             <td><?= (int) $entry['break_minutes'] ?> Min.</td>
             <td><?= h($entry['project_name']) ?></td>
             <td><?= h((string)$entry['notes']) ?></td>
-            <td><?= h($entry['created_by_name']) ?></td>
+            <td><?php $entryMinutes = max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']); echo h(format_hours($entryMinutes / 60)); ?></td>
         </tr>
         <?php endforeach; ?>
-    </table>
+    </table></div>
 </div>
+<script>
+(function() {
+    function syncField(key) {
+        var hourSelect = document.querySelector('[data-time-hour="' + key + '"]');
+        var minuteSelect = document.querySelector('[data-time-minute="' + key + '"]');
+        var hidden = document.querySelector('[data-time-hidden="' + key + '"]');
+        if (!hourSelect || !minuteSelect || !hidden) return;
+        hidden.value = hourSelect.value + ':' + minuteSelect.value;
+    }
+
+    ['start_time', 'end_time'].forEach(function(key) {
+        var hourSelect = document.querySelector('[data-time-hour="' + key + '"]');
+        var minuteSelect = document.querySelector('[data-time-minute="' + key + '"]');
+        if (hourSelect) hourSelect.addEventListener('change', function() { syncField(key); });
+        if (minuteSelect) minuteSelect.addEventListener('change', function() { syncField(key); });
+        syncField(key);
+    });
+})();
+</script>
 <?php render_footer(); ?>
