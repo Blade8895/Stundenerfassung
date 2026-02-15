@@ -194,6 +194,21 @@ function ensure_admin_exists(): void
     }
 }
 
+
+function is_quarter_time(string $time): bool
+{
+    if (!preg_match('/^\d{2}:\d{2}$/', $time)) {
+        return false;
+    }
+
+    [$h, $m] = array_map('intval', explode(':', $time));
+    if ($h < 0 || $h > 23) {
+        return false;
+    }
+
+    return in_array($m, [0, 15, 30, 45], true);
+}
+
 function minutes_between(string $start, string $end): int
 {
     [$sh, $sm] = array_map('intval', explode(':', $start));
