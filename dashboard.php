@@ -15,10 +15,9 @@ $stmt->execute(['user_id' => $user['id']]);
 $projects = $stmt->fetchAll();
 
 $listStmt = db()->prepare(
-    'SELECT te.*, p.name AS project_name, cu.name AS created_by_name
+    'SELECT te.*, p.name AS project_name
      FROM time_entries te
      INNER JOIN projects p ON p.id = te.project_id
-     INNER JOIN users cu ON cu.id = te.created_by_user_id
      WHERE te.user_id = :user_id AND substr(te.work_date,1,7) = :month
      ORDER BY te.work_date DESC, te.start_time DESC'
 );
@@ -65,8 +64,8 @@ render_header('Dashboard');
         <div style="align-self:end"><button type="submit">Filtern</button></div>
     </form>
     <p><strong>Gesamtstunden:</strong> <?= h(format_hours($totalMinutes / 60)) ?></p>
-    <table>
-        <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Pause</th><th>Baustelle</th><th>Notiz</th><th>Erfasst von</th></tr>
+    <div class="table-wrap"><table>
+        <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Pause</th><th>Baustelle</th><th>Notiz</th></tr>
         <?php foreach ($entries as $entry): ?>
         <tr>
             <td><?= h($entry['work_date']) ?></td>
@@ -75,9 +74,8 @@ render_header('Dashboard');
             <td><?= (int) $entry['break_minutes'] ?> Min.</td>
             <td><?= h($entry['project_name']) ?></td>
             <td><?= h((string)$entry['notes']) ?></td>
-            <td><?= h($entry['created_by_name']) ?></td>
         </tr>
         <?php endforeach; ?>
-    </table>
+    </table></div>
 </div>
 <?php render_footer(); ?>

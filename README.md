@@ -95,3 +95,9 @@ Das passiert meist bei einem Serverfehler (HTTP 500). Häufige Ursachen:
 3. **Falscher DSN / falsche Zugangsdaten**
 
 Die Anwendung zeigt bei DB-Startfehlern zusätzlich eine konkrete Fehlermeldung mit Hinweisen an.
+
+
+## Mobile-Optimierung
+
+- Für kleine Displays (`<=640px`) wurde ein mobiles Layout ergänzt (Navigation-Umbruch, 1-spaltige Formulare, scrollbare Tabellen), um Überlappungen zu vermeiden.
+- In `Dashboard -> Meine Zeiten` wurde die Spalte `Erfasst von` entfernt.
