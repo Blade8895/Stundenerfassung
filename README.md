@@ -108,3 +108,54 @@ Die Anwendung zeigt bei DB-Startfehlern zusätzlich eine konkrete Fehlermeldung 
 - Mitarbeiter können eigene Zeiten nur für den **heutigen Tag** erfassen (kein rückwirkendes Datum im Mitarbeiter-Dashboard).
 - Rückwirkende Einträge erfolgen über **Admin -> Stunden nachtragen**.
 - Zeitauswahl ist auf **15-Minuten-Schritte** begrenzt (`00`, `15`, `30`, `45`).
+
+
+## MySQL-Tabellen manuell via phpMyAdmin erstellen
+
+Wenn du die Tabellen manuell anlegen willst, kannst du in phpMyAdmin unter SQL folgendes ausführen:
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(190) NOT NULL,
+    email VARCHAR(190) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'employee') NOT NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS projects (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(190) NOT NULL UNIQUE,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS user_projects (
+    user_id INT NOT NULL,
+    project_id INT NOT NULL,
+    PRIMARY KEY (user_id, project_id),
+    CONSTRAINT fk_user_projects_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_projects_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS time_entries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    project_id INT NOT NULL,
+    work_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    break_minutes INT NOT NULL DEFAULT 0,
+    notes TEXT NULL,
+    created_by_user_id INT NOT NULL,
+    created_at DATETIME NOT NULL,
+    CONSTRAINT fk_time_entries_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_time_entries_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    CONSTRAINT fk_time_entries_creator FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_time_entries_user_date (user_id, work_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+Hinweis: Die Anwendung legt Tabellen bei leerer Datenbank jetzt auch automatisch an (SQLite und MySQL), sobald die Seite das erste Mal aufgerufen wird.

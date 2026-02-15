@@ -223,52 +223,92 @@ function format_hours(float $hours): string
 
 function migrate(PDO $pdo): void
 {
-    $pdo->exec(
-        'CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ("admin", "employee")),
-            active INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL
-        )'
-    );
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
 
-    $pdo->exec(
-        'CREATE TABLE IF NOT EXISTS projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            active INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL
-        )'
-    );
+    if ($driver === 'mysql') {
+        $queries = [
+            'CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(190) NOT NULL,
+                email VARCHAR(190) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                role ENUM("admin", "employee") NOT NULL,
+                active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+            'CREATE TABLE IF NOT EXISTS projects (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(190) NOT NULL UNIQUE,
+                active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+            'CREATE TABLE IF NOT EXISTS user_projects (
+                user_id INT NOT NULL,
+                project_id INT NOT NULL,
+                PRIMARY KEY (user_id, project_id),
+                CONSTRAINT fk_user_projects_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                CONSTRAINT fk_user_projects_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+            'CREATE TABLE IF NOT EXISTS time_entries (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                project_id INT NOT NULL,
+                work_date DATE NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                break_minutes INT NOT NULL DEFAULT 0,
+                notes TEXT NULL,
+                created_by_user_id INT NOT NULL,
+                created_at DATETIME NOT NULL,
+                CONSTRAINT fk_time_entries_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                CONSTRAINT fk_time_entries_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                CONSTRAINT fk_time_entries_creator FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_time_entries_user_date (user_id, work_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+        ];
+    } else {
+        $queries = [
+            'CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL CHECK(role IN ("admin", "employee")),
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL
+            )',
+            'CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL
+            )',
+            'CREATE TABLE IF NOT EXISTS user_projects (
+                user_id INTEGER NOT NULL,
+                project_id INTEGER NOT NULL,
+                PRIMARY KEY (user_id, project_id),
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+            )',
+            'CREATE TABLE IF NOT EXISTS time_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                project_id INTEGER NOT NULL,
+                work_date TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                break_minutes INTEGER NOT NULL DEFAULT 0,
+                notes TEXT,
+                created_by_user_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+            )',
+        ];
+    }
 
-    $pdo->exec(
-        'CREATE TABLE IF NOT EXISTS user_projects (
-            user_id INTEGER NOT NULL,
-            project_id INTEGER NOT NULL,
-            PRIMARY KEY (user_id, project_id),
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
-        )'
-    );
-
-    $pdo->exec(
-        'CREATE TABLE IF NOT EXISTS time_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            project_id INTEGER NOT NULL,
-            work_date TEXT NOT NULL,
-            start_time TEXT NOT NULL,
-            end_time TEXT NOT NULL,
-            break_minutes INTEGER NOT NULL DEFAULT 0,
-            notes TEXT,
-            created_by_user_id INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
-            FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
-        )'
-    );
+    foreach ($queries as $query) {
+        $pdo->exec($query);
+    }
 }
