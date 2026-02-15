@@ -40,9 +40,10 @@ render_header('Dashboard');
     <form method="post" action="time_entry_save.php">
         <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>">
         <div class="grid">
-            <div><label>Datum</label><input type="date" name="work_date" required value="<?= h(date('Y-m-d')) ?>"></div>
-            <div><label>Von</label><input type="time" name="start_time" required></div>
-            <div><label>Bis</label><input type="time" name="end_time" required></div>
+            <input type="hidden" name="work_date" value="<?= h(date('Y-m-d')) ?>">
+            <div><label>Arbeitstag</label><input value="<?= h(date('d.m.Y')) ?>" readonly></div>
+            <div><label>Von</label><input type="time" name="start_time" step="900" required></div>
+            <div><label>Bis</label><input type="time" name="end_time" step="900" required></div>
             <div><label>Pause (Min.)</label><input type="number" name="break_minutes" min="0" value="0" required></div>
             <div><label>Baustelle</label><select name="project_id" required>
                 <option value="">Bitte wählen</option>

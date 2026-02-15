@@ -14,12 +14,28 @@ $break = max(0, (int) ($_POST['break_minutes'] ?? 0));
 $projectId = (int) ($_POST['project_id'] ?? 0);
 $notes = trim($_POST['notes'] ?? '');
 
-if (!$isAdmin) {
-    $targetUserId = (int) $user['id'];
+function is_quarter_time(string $time): bool
+{
+    if (!preg_match('/^\d{2}:\d{2}$/', $time)) {
+        return false;
+    }
+
+    [$h, $m] = array_map('intval', explode(':', $time));
+    if ($h < 0 || $h > 23) {
+        return false;
+    }
+
+    return in_array($m, [0, 15, 30, 45], true);
 }
 
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $workDate) || !preg_match('/^\d{2}:\d{2}$/', $start) || !preg_match('/^\d{2}:\d{2}$/', $end)) {
-    flash('error', 'Ungültige Datums- oder Zeitangabe.');
+
+if (!$isAdmin) {
+    $targetUserId = (int) $user['id'];
+    $workDate = date('Y-m-d');
+}
+
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $workDate) || !is_quarter_time($start) || !is_quarter_time($end)) {
+    flash('error', 'Ungültige Datums- oder Zeitangabe (Zeiten nur 00, 15, 30, 45).');
     header('Location: dashboard.php');
     exit;
 }

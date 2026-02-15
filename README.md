@@ -101,3 +101,10 @@ Die Anwendung zeigt bei DB-Startfehlern zusätzlich eine konkrete Fehlermeldung 
 
 - Für kleine Displays (`<=640px`) wurde ein mobiles Layout ergänzt (Navigation-Umbruch, 1-spaltige Formulare, scrollbare Tabellen), um Überlappungen zu vermeiden.
 - In `Dashboard -> Meine Zeiten` wurde die Spalte `Erfasst von` entfernt.
+
+
+## Regeln für Zeiterfassung
+
+- Mitarbeiter können eigene Zeiten nur für den **heutigen Tag** erfassen (kein rückwirkendes Datum im Mitarbeiter-Dashboard).
+- Rückwirkende Einträge erfolgen über **Admin -> Stunden nachtragen**.
+- Zeitauswahl ist auf **15-Minuten-Schritte** begrenzt (`00`, `15`, `30`, `45`).
