@@ -10,7 +10,7 @@ $role = $_POST['role'] ?? 'employee';
 
 if ($name === '' || $email === '' || strlen($password) < 8 || !in_array($role, ['admin', 'employee'], true)) {
     flash('error', 'Ungültige Eingaben beim Benutzer.');
-    header('Location: admin.php');
+    header('Location: admin_users.php');
     exit;
 }
 
@@ -28,4 +28,4 @@ try {
     flash('error', 'Benutzer konnte nicht erstellt werden (E-Mail evtl. bereits vorhanden).');
 }
 
-header('Location: admin.php');
+header('Location: admin_users.php');

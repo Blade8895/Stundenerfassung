@@ -8,7 +8,7 @@ $projectIds = array_map('intval', $_POST['project_ids'] ?? []);
 
 if ($userId <= 0) {
     flash('error', 'Ungültiger Benutzer.');
-    header('Location: admin.php');
+    header('Location: admin_projects.php');
     exit;
 }
 
@@ -32,4 +32,4 @@ try {
     flash('error', 'Fehler beim Speichern der Zuweisung.');
 }
 
-header('Location: admin.php?user_id=' . $userId);
+header('Location: admin_projects.php?user_id=' . $userId);

@@ -3,11 +3,12 @@
 Webspace-fähige Zeiterfassung mit:
 
 - Login + Benutzerverwaltung (Admin/Mitarbeiter)
-- Baustellenverwaltung und Zuweisung pro Mitarbeiter
+- Baustellenverwaltung und Zuweisung pro Benutzer (inkl. Admins)
 - Zeiterfassung mit `von`/`bis`, Pause, Notiz
 - Monatsauswertung für Mitarbeiter (Gesamtstunden)
-- Admin kann Stunden für Mitarbeiter nachtragen
+- Admin kann Stunden für Benutzer nachtragen
 - SQL-Speicherung via PDO (SQLite oder MySQL)
+- Optionaler Light-/Darkmode
 
 ## Setup-Anleitung (Schritt für Schritt)
 
@@ -51,7 +52,7 @@ Bei SQLite muss das Zielverzeichnis beschreibbar sein:
 - Verzeichnis `data/` muss existieren.
 - PHP-Webserver-Benutzer braucht Schreibrechte auf `data/`.
 
-Typischer Linux-Befehl (je nach Hosting ggf. via Dateimanager/FTP setzen):
+Typischer Linux-Befehl:
 
 ```bash
 chmod 775 data
@@ -65,30 +66,30 @@ Im Browser öffnen:
 
 Dort den ersten Admin anlegen.
 
-### 6) Login und Nutzung
+### 6) Admin-Masken nutzen
 
-- Danach über `login.php` anmelden.
-- Im Adminbereich Benutzer und Baustellen anlegen.
-- Mitarbeiter Baustellen zuweisen.
-- Mitarbeiter buchen Zeiten, Admin kann Zeiten nachtragen.
+`Admin` ist jetzt in mehrere eigene Masken getrennt:
+
+- `admin.php` → Übersicht + Gesamtstunden pro Mitarbeiter
+- `admin_users.php` → Benutzer anlegen
+- `admin_projects.php` → Baustellen anlegen/bearbeiten + Zuweisung + Filter (Name, Eintragungsdatum, letzte Aktivität)
+- `admin_time_entry.php` → Stunden nachtragen
+
+### 7) Darkmode
+
+Im Header kann per `Theme: DARK/LIGHT` umgeschaltet werden.
+Darkmode-Farben:
+
+- Hintergrund: `#0B0D10`
+- Boxen: `#12151B`
+- Text: `#E8ECF1`
 
 ## Häufiges Problem: „Die Anfrage kann nicht bearbeitet werden“
 
 Das passiert meist bei einem Serverfehler (HTTP 500). Häufige Ursachen:
 
 1. **SQLite-Verzeichnis nicht beschreibbar**
-   - `data/` Rechte prüfen.
 2. **PDO-Treiber fehlt**
-   - `pdo_sqlite` oder `pdo_mysql` ist nicht aktiv.
 3. **Falscher DSN / falsche Zugangsdaten**
-   - `config.php` prüfen.
 
-Die Anwendung zeigt bei DB-Startfehlern jetzt zusätzlich eine konkrete Fehlermeldung mit Hinweisen an.
-
-## Sicherheit / Validierung
-
-- Passwort-Hashing mit `password_hash`
-- Session-basierter Login
-- CSRF-Schutz für Formulare
-- Verhindert überlappende Zeitbuchungen pro Tag/Mitarbeiter
-- Plausibilitätsprüfungen für Zeit/Pause
+Die Anwendung zeigt bei DB-Startfehlern zusätzlich eine konkrete Fehlermeldung mit Hinweisen an.

@@ -97,6 +97,17 @@ function strtolower_safe(string $value): string
     return strtolower($value);
 }
 
+function get_theme(): string
+{
+    $theme = $_SESSION['theme'] ?? 'light';
+    return in_array($theme, ['light', 'dark'], true) ? $theme : 'light';
+}
+
+function set_theme(string $theme): void
+{
+    $_SESSION['theme'] = in_array($theme, ['light', 'dark'], true) ? $theme : 'light';
+}
+
 function current_user(): ?array
 {
     if (!isset($_SESSION['user_id'])) {
