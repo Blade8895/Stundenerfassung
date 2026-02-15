@@ -35,4 +35,8 @@ th,td{border:1px solid var(--border);padding:8px;font-size:14px;text-align:left}
   th,td{font-size:13px;padding:7px}
   table{min-width:560px}
   .btn{width:100%;box-sizing:border-box}
+  .time-row{grid-template-columns:1fr 1fr}
 }
+
+.time-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.time-manual{margin-top:6px}

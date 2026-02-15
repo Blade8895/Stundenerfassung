@@ -108,3 +108,4 @@ Die Anwendung zeigt bei DB-Startfehlern zusätzlich eine konkrete Fehlermeldung 
 - Mitarbeiter können eigene Zeiten nur für den **heutigen Tag** erfassen (kein rückwirkendes Datum im Mitarbeiter-Dashboard).
 - Rückwirkende Einträge erfolgen über **Admin -> Stunden nachtragen**.
 - Zeitauswahl ist auf **15-Minuten-Schritte** begrenzt (`00`, `15`, `30`, `45`).
+- Bei manueller Eingabe (`HH:MM`) wird automatisch auf den nächsten zulässigen 15-Minuten-Wert gerundet.
