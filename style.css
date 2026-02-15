@@ -39,4 +39,6 @@ th,td{border:1px solid var(--border);padding:8px;font-size:14px;text-align:left}
 }
 
 .time-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.time-manual{margin-top:6px}
+
+/* Safari/IOS konsistente Select-Darstellung */
+select{-webkit-appearance:menulist;appearance:menulist;min-height:38px}
