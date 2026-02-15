@@ -44,7 +44,7 @@ render_header('Admin - Gesamtstunden');
     </form>
 
     <table>
-        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Monat</th><th>Gesamtstunden</th></tr>
+        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Monat</th><th>Gesamtstunden</th><th>Details</th></tr>
         <?php foreach ($totals as $row): ?>
             <tr>
                 <td><?= (int) $row['id'] ?></td>
@@ -52,6 +52,7 @@ render_header('Admin - Gesamtstunden');
                 <td><?= h($row['email']) ?></td>
                 <td><?= h($month) ?></td>
                 <td><?= h(format_hours(max(0, ((int) $row['total_minutes']) / 60))) ?></td>
+                <td><a class="btn" href="admin_employee_details.php?user_id=<?= (int) $row['id'] ?>&month=<?= h($month) ?>">Details</a></td>
             </tr>
         <?php endforeach; ?>
     </table>

@@ -75,6 +75,7 @@ Dort den ersten Admin anlegen.
 - `admin_projects.php` → Baustellen anlegen/bearbeiten + Zuweisung + Filter (Name, Eintragungsdatum, letzte Aktivität)
 - `admin_time_entry.php` → Stunden nachtragen
 - `admin_totals.php` → Gesamtstunden pro Mitarbeiter mit Monatsfilter + CSV Export
+- `admin_employee_details.php` → Detailansicht je Mitarbeiter (Baustelle, Notizen, einzelne Buchungen)
 
 ### 7) Darkmode
 
