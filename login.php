@@ -8,7 +8,7 @@ if (current_user()) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = mb_strtolower(trim($_POST['email'] ?? ''));
+    $email = strtolower_safe(trim($_POST['email'] ?? ''));
     $password = $_POST['password'] ?? '';
 
     $stmt = db()->prepare('SELECT * FROM users WHERE email = :email AND active = 1');

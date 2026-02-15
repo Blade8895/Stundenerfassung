@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = db()->prepare('INSERT INTO users(name, email, password_hash, role, active, created_at) VALUES(:name, :email, :password_hash, "admin", 1, :created_at)');
         $stmt->execute([
             'name' => $name,
-            'email' => mb_strtolower($email),
+            'email' => strtolower_safe($email),
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
             'created_at' => now(),
         ]);

@@ -4,7 +4,7 @@ require_admin();
 verify_csrf();
 
 $name = trim($_POST['name'] ?? '');
-$email = mb_strtolower(trim($_POST['email'] ?? ''));
+$email = strtolower_safe(trim($_POST['email'] ?? ''));
 $password = $_POST['password'] ?? '';
 $role = $_POST['role'] ?? 'employee';
 
