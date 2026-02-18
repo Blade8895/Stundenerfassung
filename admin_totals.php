@@ -8,27 +8,33 @@ if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
 }
 
 $stmt = db()->prepare(
-    'SELECT u.id, u.name, u.email,
+    'SELECT u.id, u.name, u.email, u.role,
             COALESCE(SUM((CAST(substr(te.end_time,1,2) AS INTEGER)*60 + CAST(substr(te.end_time,4,2) AS INTEGER)) -
                          (CAST(substr(te.start_time,1,2) AS INTEGER)*60 + CAST(substr(te.start_time,4,2) AS INTEGER)) -
                          te.break_minutes), 0) AS total_minutes
      FROM users u
      LEFT JOIN time_entries te ON te.user_id = u.id AND substr(te.work_date,1,7) = :month
-     WHERE u.role = "employee" AND u.active = 1
-     GROUP BY u.id, u.name, u.email
+     WHERE u.role IN ("employee", "trainee", "admin") AND u.active = 1
+     GROUP BY u.id, u.name, u.email, u.role
      ORDER BY u.name'
 );
 $stmt->execute(['month' => $month]);
 $totals = $stmt->fetchAll();
 
+$roleLabels = [
+    'employee' => 'Mitarbeiter',
+    'trainee' => 'Auszubildender',
+    'admin' => 'Admin',
+];
+
 if (($_GET['export'] ?? '') === 'csv') {
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="gesamtstunden-' . $month . '.csv"');
 
-    echo "Mitarbeiter-ID;Name;E-Mail;Monat;Gesamtstunden\n";
+    echo "Benutzer-ID;Name;E-Mail;Rolle;Monat;Gesamtstunden\n";
     foreach ($totals as $row) {
         $hours = number_format(max(0, ((int) $row['total_minutes']) / 60), 2, ',', '');
-        echo (int) $row['id'] . ';"' . str_replace('"', '""', $row['name']) . '";"' . str_replace('"', '""', $row['email']) . '";' . $month . ';' . $hours . "\n";
+        echo (int) $row['id'] . ';"' . str_replace('"', '""', $row['name']) . '";"' . str_replace('"', '""', $row['email']) . '";' . ($roleLabels[$row['role']] ?? $row['role']) . ';' . $month . ';' . $hours . "\n";
     }
     exit;
 }
@@ -36,7 +42,7 @@ if (($_GET['export'] ?? '') === 'csv') {
 render_header('Admin - Gesamtstunden');
 ?>
 <div class="card">
-    <h3>Gesamtstunden pro Mitarbeiter</h3>
+    <h3>Gesamtstunden pro Benutzer</h3>
     <form method="get" class="grid">
         <div><label>Monat</label><input type="month" name="month" value="<?= h($month) ?>"></div>
         <div style="align-self:end"><button type="submit">Filtern</button></div>
@@ -44,12 +50,13 @@ render_header('Admin - Gesamtstunden');
     </form>
 
     <table>
-        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Monat</th><th>Gesamtstunden</th><th>Details</th></tr>
+        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Monat</th><th>Gesamtstunden</th><th>Details</th></tr>
         <?php foreach ($totals as $row): ?>
             <tr>
                 <td><?= (int) $row['id'] ?></td>
                 <td><?= h($row['name']) ?></td>
                 <td><?= h($row['email']) ?></td>
+                <td><?= h($roleLabels[$row['role']] ?? $row['role']) ?></td>
                 <td><?= h($month) ?></td>
                 <td><?= h(format_hours(max(0, ((int) $row['total_minutes']) / 60))) ?></td>
                 <td><a class="btn" href="admin_employee_details.php?user_id=<?= (int) $row['id'] ?>&month=<?= h($month) ?>">Details</a></td>

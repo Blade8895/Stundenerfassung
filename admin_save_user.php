@@ -8,7 +8,7 @@ $email = strtolower_safe(trim($_POST['email'] ?? ''));
 $password = $_POST['password'] ?? '';
 $role = $_POST['role'] ?? 'employee';
 
-if ($name === '' || $email === '' || strlen($password) < 8 || !in_array($role, ['admin', 'employee'], true)) {
+if ($name === '' || $email === '' || strlen($password) < 8 || !in_array($role, ['admin', 'employee', 'trainee'], true)) {
     flash('error', 'Ungültige Eingaben beim Benutzer.');
     header('Location: admin_users.php');
     exit;
