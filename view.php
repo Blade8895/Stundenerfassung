@@ -16,6 +16,7 @@ function render_header(string $title): void
         }
         $targetTheme = $theme === 'dark' ? 'light' : 'dark';
         echo ' | <a href="theme_toggle.php?theme=' . h($targetTheme) . '">Theme: ' . h(strtoupper($targetTheme)) . '</a>';
+        echo ' | <a href="user_settings.php">Profil</a>';
         echo ' | <a href="logout.php">Logout</a></nav>';
     }
     echo '</header>';
