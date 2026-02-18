@@ -39,6 +39,64 @@ if (($_GET['export'] ?? '') === 'csv') {
     exit;
 }
 
+if (($_GET['export'] ?? '') === 'user_csv') {
+    $userId = (int) ($_GET['user_id'] ?? 0);
+    if ($userId <= 0) {
+        flash('error', 'Ungültiger Benutzer für CSV Export.');
+        header('Location: admin_totals.php?month=' . urlencode($month));
+        exit;
+    }
+
+    $userStmt = db()->prepare('SELECT id, name, email, role FROM users WHERE id = :id AND active = 1');
+    $userStmt->execute(['id' => $userId]);
+    $user = $userStmt->fetch();
+    if (!$user || !in_array($user['role'], ['employee', 'trainee', 'admin'], true)) {
+        flash('error', 'Benutzer nicht gefunden.');
+        header('Location: admin_totals.php?month=' . urlencode($month));
+        exit;
+    }
+
+    $entryStmt = db()->prepare(
+        'SELECT te.work_date, te.start_time, te.end_time, te.break_minutes, te.notes, p.name AS project_name, cb.name AS created_by
+         FROM time_entries te
+         INNER JOIN projects p ON p.id = te.project_id
+         INNER JOIN users cb ON cb.id = te.created_by_user_id
+         WHERE te.user_id = :user_id AND substr(te.work_date,1,7) = :month
+         ORDER BY te.work_date ASC, te.start_time ASC'
+    );
+    $entryStmt->execute(['user_id' => $userId, 'month' => $month]);
+    $entries = $entryStmt->fetchAll();
+
+    $safeName = preg_replace('/[^a-zA-Z0-9_-]+/', '-', (string) $user['name']);
+    $safeName = trim((string) $safeName, '-');
+    if ($safeName === '') {
+        $safeName = 'benutzer-' . $userId;
+    }
+
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="stunden-' . $safeName . '-' . $month . '.csv"');
+
+    echo "Benutzer-ID;Name;E-Mail;Rolle;Monat;Datum;Von;Bis;Pause (Minuten);Baustelle;Notiz;Erfasst von;Stunden\n";
+    foreach ($entries as $entry) {
+        $minutes = max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']);
+        $hours = number_format($minutes / 60, 2, ',', '');
+        echo (int) $user['id']
+            . ';"' . str_replace('"', '""', $user['name']) . '"'
+            . ';"' . str_replace('"', '""', $user['email']) . '"'
+            . ';' . ($roleLabels[$user['role']] ?? $user['role'])
+            . ';' . $month
+            . ';' . $entry['work_date']
+            . ';' . $entry['start_time']
+            . ';' . $entry['end_time']
+            . ';' . (int) $entry['break_minutes']
+            . ';"' . str_replace('"', '""', $entry['project_name']) . '"'
+            . ';"' . str_replace('"', '""', (string) $entry['notes']) . '"'
+            . ';"' . str_replace('"', '""', $entry['created_by']) . '"'
+            . ';' . $hours . "\n";
+    }
+    exit;
+}
+
 render_header('Admin - Gesamtstunden');
 ?>
 <div class="card">
@@ -50,7 +108,7 @@ render_header('Admin - Gesamtstunden');
     </form>
 
     <table>
-        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Monat</th><th>Gesamtstunden</th><th>Details</th></tr>
+        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Monat</th><th>Gesamtstunden</th><th>Details</th><th>CSV</th></tr>
         <?php foreach ($totals as $row): ?>
             <tr>
                 <td><?= (int) $row['id'] ?></td>
@@ -60,6 +118,7 @@ render_header('Admin - Gesamtstunden');
                 <td><?= h($month) ?></td>
                 <td><?= h(format_hours(max(0, ((int) $row['total_minutes']) / 60))) ?></td>
                 <td><a class="btn" href="admin_employee_details.php?user_id=<?= (int) $row['id'] ?>&month=<?= h($month) ?>">Details</a></td>
+                <td><a class="btn" href="admin_totals.php?month=<?= h($month) ?>&export=user_csv&user_id=<?= (int) $row['id'] ?>">CSV Benutzer</a></td>
             </tr>
         <?php endforeach; ?>
     </table>
