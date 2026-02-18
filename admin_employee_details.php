@@ -9,7 +9,7 @@ if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
 }
 
 if ($userId <= 0) {
-    flash('error', 'Ungültiger Mitarbeiter.');
+    flash('error', 'Ungültiger Benutzer.');
     header('Location: admin_totals.php?month=' . urlencode($month));
     exit;
 }
@@ -17,8 +17,8 @@ if ($userId <= 0) {
 $userStmt = db()->prepare('SELECT id, name, email, role, active FROM users WHERE id = :id');
 $userStmt->execute(['id' => $userId]);
 $user = $userStmt->fetch();
-if (!$user || $user['role'] !== 'employee') {
-    flash('error', 'Mitarbeiter nicht gefunden.');
+if (!$user || !in_array($user['role'], ['employee', 'trainee', 'admin'], true)) {
+    flash('error', 'Benutzer nicht gefunden.');
     header('Location: admin_totals.php?month=' . urlencode($month));
     exit;
 }
@@ -39,10 +39,10 @@ foreach ($entries as $entry) {
     $totalMinutes += max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']);
 }
 
-render_header('Admin - Mitarbeiterdetails');
+render_header('Admin - Benutzerdetails');
 ?>
 <div class="card">
-    <h3>Mitarbeiterdetails</h3>
+    <h3>Benutzerdetails</h3>
     <p><strong>Name:</strong> <?= h($user['name']) ?> (<?= h($user['email']) ?>)</p>
     <form method="get" class="grid">
         <input type="hidden" name="user_id" value="<?= (int) $userId ?>">

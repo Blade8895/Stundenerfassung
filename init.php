@@ -25,6 +25,11 @@ function db(): PDO
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 ]
             );
+
+            if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+                $pdo->exec('PRAGMA busy_timeout = 5000');
+            }
+
             migrate($pdo);
         } catch (Throwable $e) {
             render_startup_error($e);
@@ -99,13 +104,23 @@ function strtolower_safe(string $value): string
 
 function get_theme(): string
 {
-    $theme = $_SESSION['theme'] ?? 'light';
+    $theme = $_COOKIE['theme'] ?? ($_SESSION['theme'] ?? 'light');
     return in_array($theme, ['light', 'dark'], true) ? $theme : 'light';
 }
 
 function set_theme(string $theme): void
 {
-    $_SESSION['theme'] = in_array($theme, ['light', 'dark'], true) ? $theme : 'light';
+    $validatedTheme = in_array($theme, ['light', 'dark'], true) ? $theme : 'light';
+    $_SESSION['theme'] = $validatedTheme;
+
+    $isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    setcookie('theme', $validatedTheme, [
+        'expires' => time() + (86400 * 365),
+        'path' => '/',
+        'secure' => $isHttps,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 }
 
 function current_user(): ?array
@@ -232,7 +247,7 @@ function migrate(PDO $pdo): void
                 name VARCHAR(190) NOT NULL,
                 email VARCHAR(190) NOT NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
-                role ENUM("admin", "employee") NOT NULL,
+                role ENUM("admin", "employee", "trainee") NOT NULL,
                 active TINYINT(1) NOT NULL DEFAULT 1,
                 created_at DATETIME NOT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
@@ -273,7 +288,7 @@ function migrate(PDO $pdo): void
                 name TEXT NOT NULL,
                 email TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
-                role TEXT NOT NULL CHECK(role IN ("admin", "employee")),
+                role TEXT NOT NULL CHECK(role IN ("admin", "employee", "trainee")),
                 active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL
             )',
@@ -310,5 +325,56 @@ function migrate(PDO $pdo): void
 
     foreach ($queries as $query) {
         $pdo->exec($query);
+    }
+
+    ensure_supported_roles($pdo, $driver);
+}
+
+function ensure_supported_roles(PDO $pdo, string $driver): void
+{
+    if ($driver === 'mysql') {
+        $pdo->exec('ALTER TABLE users MODIFY COLUMN role ENUM("admin", "employee", "trainee") NOT NULL');
+        return;
+    }
+
+    if ($driver !== 'sqlite') {
+        return;
+    }
+
+    $tableSqlStmt = $pdo->query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'");
+    $tableSql = (string) ($tableSqlStmt ? $tableSqlStmt->fetchColumn() : '');
+    if ($tableSqlStmt instanceof PDOStatement) {
+        $tableSqlStmt->closeCursor();
+    }
+
+    if (strtolower_safe($tableSql) === '' || strpos(strtolower_safe($tableSql), 'trainee') !== false) {
+        return;
+    }
+
+    $pdo->exec('PRAGMA foreign_keys = OFF');
+
+    try {
+        $pdo->beginTransaction();
+        $pdo->exec('CREATE TABLE users_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ("admin", "employee", "trainee")),
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL
+        )');
+        $pdo->exec('INSERT INTO users_new (id, name, email, password_hash, role, active, created_at)
+            SELECT id, name, email, password_hash, role, active, created_at FROM users');
+        $pdo->exec('DROP TABLE users');
+        $pdo->exec('ALTER TABLE users_new RENAME TO users');
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    } finally {
+        $pdo->exec('PRAGMA foreign_keys = ON');
     }
 }

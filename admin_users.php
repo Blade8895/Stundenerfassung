@@ -14,7 +14,7 @@ render_header('Admin - Benutzer');
             <div><label>Name</label><input name="name" required></div>
             <div><label>E-Mail</label><input type="email" name="email" required></div>
             <div><label>Passwort</label><input type="password" name="password" minlength="8" required></div>
-            <div><label>Rolle</label><select name="role"><option value="employee">Mitarbeiter</option><option value="admin">Admin</option></select></div>
+            <div><label>Rolle</label><select name="role"><option value="employee">Mitarbeiter</option><option value="trainee">Auszubildender</option><option value="admin">Admin</option></select></div>
         </div>
         <p><button type="submit">Benutzer speichern</button></p>
     </form>
@@ -33,6 +33,7 @@ render_header('Admin - Benutzer');
                 <td>
                     <select form="<?= h($formId) ?>" name="role">
                         <option value="employee" <?= $user['role'] === 'employee' ? 'selected' : '' ?>>Mitarbeiter</option>
+                        <option value="trainee" <?= $user['role'] === 'trainee' ? 'selected' : '' ?>>Auszubildender</option>
                         <option value="admin" <?= $user['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
                     </select>
                 </td>

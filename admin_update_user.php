@@ -9,7 +9,7 @@ $email = strtolower_safe(trim($_POST['email'] ?? ''));
 $password = $_POST['password'] ?? '';
 $role = $_POST['role'] ?? 'employee';
 
-if ($id <= 0 || $name === '' || $email === '' || !in_array($role, ['admin', 'employee'], true)) {
+if ($id <= 0 || $name === '' || $email === '' || !in_array($role, ['admin', 'employee', 'trainee'], true)) {
     flash('error', 'Ungültige Eingaben beim Benutzer-Update.');
     header('Location: admin_users.php');
     exit;
