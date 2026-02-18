@@ -25,6 +25,11 @@ function db(): PDO
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 ]
             );
+
+            if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+                $pdo->exec('PRAGMA busy_timeout = 5000');
+            }
+
             migrate($pdo);
         } catch (Throwable $e) {
             render_startup_error($e);
@@ -338,25 +343,38 @@ function ensure_supported_roles(PDO $pdo, string $driver): void
 
     $tableSqlStmt = $pdo->query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'");
     $tableSql = (string) ($tableSqlStmt ? $tableSqlStmt->fetchColumn() : '');
-    if (strpos($tableSql, '"trainee"') !== false) {
+    if ($tableSqlStmt instanceof PDOStatement) {
+        $tableSqlStmt->closeCursor();
+    }
+
+    if (strtolower_safe($tableSql) === '' || strpos(strtolower_safe($tableSql), 'trainee') !== false) {
         return;
     }
 
     $pdo->exec('PRAGMA foreign_keys = OFF');
-    $pdo->beginTransaction();
-    $pdo->exec('CREATE TABLE users_new (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        role TEXT NOT NULL CHECK(role IN ("admin", "employee", "trainee")),
-        active INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL
-    )');
-    $pdo->exec('INSERT INTO users_new (id, name, email, password_hash, role, active, created_at)
-        SELECT id, name, email, password_hash, role, active, created_at FROM users');
-    $pdo->exec('DROP TABLE users');
-    $pdo->exec('ALTER TABLE users_new RENAME TO users');
-    $pdo->commit();
-    $pdo->exec('PRAGMA foreign_keys = ON');
+
+    try {
+        $pdo->beginTransaction();
+        $pdo->exec('CREATE TABLE users_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ("admin", "employee", "trainee")),
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL
+        )');
+        $pdo->exec('INSERT INTO users_new (id, name, email, password_hash, role, active, created_at)
+            SELECT id, name, email, password_hash, role, active, created_at FROM users');
+        $pdo->exec('DROP TABLE users');
+        $pdo->exec('ALTER TABLE users_new RENAME TO users');
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    } finally {
+        $pdo->exec('PRAGMA foreign_keys = ON');
+    }
 }
