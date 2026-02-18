@@ -21,18 +21,33 @@ render_header('Admin - Benutzer');
 </div>
 
 <div class="card">
-    <h3>Benutzerübersicht</h3>
-    <table>
-        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Angelegt</th></tr>
+    <h3>Benutzer bearbeiten</h3>
+    <div class="table-wrap"><table>
+        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Passwort</th><th>Angelegt</th><th>Aktion</th></tr>
         <?php foreach ($users as $user): ?>
+            <?php $formId = 'user-form-' . (int) $user['id']; ?>
             <tr>
                 <td><?= (int) $user['id'] ?></td>
-                <td><?= h($user['name']) ?></td>
-                <td><?= h($user['email']) ?></td>
-                <td><?= h($user['role']) ?></td>
+                <td><input form="<?= h($formId) ?>" name="name" value="<?= h($user['name']) ?>" required></td>
+                <td><input form="<?= h($formId) ?>" type="email" name="email" value="<?= h($user['email']) ?>" required></td>
+                <td>
+                    <select form="<?= h($formId) ?>" name="role">
+                        <option value="employee" <?= $user['role'] === 'employee' ? 'selected' : '' ?>>Mitarbeiter</option>
+                        <option value="admin" <?= $user['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
+                    </select>
+                </td>
+                <td><input form="<?= h($formId) ?>" type="password" name="password" minlength="8" placeholder="leer lassen"></td>
                 <td><?= h($user['created_at']) ?></td>
+                <td>
+                    <form id="<?= h($formId) ?>" method="post" action="admin_update_user.php">
+                        <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>">
+                        <input type="hidden" name="id" value="<?= (int) $user['id'] ?>">
+                        <button type="submit">Speichern</button>
+                    </form>
+                </td>
             </tr>
         <?php endforeach; ?>
-    </table>
+    </table></div>
+    <p class="small">Passwort nur setzen, wenn es geändert werden soll (mind. 8 Zeichen).</p>
 </div>
 <?php render_footer(); ?>
