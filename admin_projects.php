@@ -118,13 +118,14 @@ render_header('Admin - Baustellen');
     </form>
 
     <table>
-        <tr><th>ID</th><th>Name</th><th>Angelegt</th><th>Letzte Aktivität</th></tr>
+        <tr><th>ID</th><th>Name</th><th>Angelegt</th><th>Letzte Aktivität</th><th>Aktion</th></tr>
         <?php foreach ($projects as $project): ?>
             <tr>
                 <td><?= (int) $project['id'] ?></td>
                 <td><?= h($project['name']) ?></td>
                 <td><?= h($project['created_at']) ?></td>
                 <td><?= h($project['last_activity'] ?: '-') ?></td>
+                <td><a class="btn" href="admin_project_details.php?project_id=<?= (int) $project['id'] ?>">Details</a></td>
             </tr>
         <?php endforeach; ?>
     </table>
