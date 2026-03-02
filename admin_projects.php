@@ -5,6 +5,12 @@ require_admin();
 $nameFilter = trim($_GET['name'] ?? '');
 $createdFrom = trim($_GET['created_from'] ?? '');
 $createdTo = trim($_GET['created_to'] ?? '');
+$month = $_GET['month'] ?? date('Y-m');
+$printView = (($_GET['print'] ?? '') === '1');
+
+if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+    $month = date('Y-m');
+}
 $sort = $_GET['sort'] ?? 'name_asc';
 
 $allowedSort = [
@@ -32,9 +38,16 @@ if ($createdTo !== '') {
     $params['created_to'] = $createdTo;
 }
 
-$sql = 'SELECT p.id, p.name, p.created_at, MAX(te.work_date) AS last_activity
+$sql = 'SELECT p.id, p.name, p.created_at, MAX(te.work_date) AS last_activity,
+               COALESCE(SUM(CASE
+                   WHEN substr(te.work_date, 1, 7) = :month
+                   THEN (CAST(substr(te.end_time,1,2) AS INTEGER)*60 + CAST(substr(te.end_time,4,2) AS INTEGER)) -
+                        (CAST(substr(te.start_time,1,2) AS INTEGER)*60 + CAST(substr(te.start_time,4,2) AS INTEGER)) - te.break_minutes
+                   ELSE 0
+               END), 0) AS total_minutes
         FROM projects p
         LEFT JOIN time_entries te ON te.project_id = p.id';
+$params['month'] = $month;
 if (count($where) > 0) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
 }
@@ -73,6 +86,7 @@ render_header('Admin - Baustellen');
         <input type="hidden" name="name" value="<?= h($nameFilter) ?>">
         <input type="hidden" name="created_from" value="<?= h($createdFrom) ?>">
         <input type="hidden" name="created_to" value="<?= h($createdTo) ?>">
+        <input type="hidden" name="month" value="<?= h($month) ?>">
         <input type="hidden" name="sort" value="<?= h($sort) ?>">
         <div>
             <label>Benutzer</label>
@@ -104,6 +118,7 @@ render_header('Admin - Baustellen');
         <div><label>Name</label><input name="name" value="<?= h($nameFilter) ?>" placeholder="z. B. Rohbau"></div>
         <div><label>Angelegt ab</label><input type="date" name="created_from" value="<?= h($createdFrom) ?>"></div>
         <div><label>Angelegt bis</label><input type="date" name="created_to" value="<?= h($createdTo) ?>"></div>
+        <div><label>Monat (Gesamtstunden)</label><input type="month" name="month" value="<?= h($month) ?>"></div>
         <div><label>Sortierung</label>
             <select name="sort">
                 <option value="name_asc" <?= $sort === 'name_asc' ? 'selected' : '' ?>>Name A-Z</option>
@@ -115,16 +130,22 @@ render_header('Admin - Baustellen');
             </select>
         </div>
         <div style="align-self:end"><button type="submit">Filtern</button></div>
+        <div style="align-self:end"><a class="btn" href="admin_projects.php?name=<?= urlencode($nameFilter) ?>&created_from=<?= urlencode($createdFrom) ?>&created_to=<?= urlencode($createdTo) ?>&month=<?= urlencode($month) ?>&sort=<?= urlencode($sort) ?>&print=1" target="_blank" rel="noopener">Druckansicht</a></div>
     </form>
 
+    <?php if ($printView): ?>
+        <script>window.print();</script>
+    <?php endif; ?>
+
     <table>
-        <tr><th>ID</th><th>Name</th><th>Angelegt</th><th>Letzte Aktivität</th><th>Aktion</th></tr>
+        <tr><th>ID</th><th>Name</th><th>Angelegt</th><th>Letzte Aktivität</th><th>Gesamtstunden (<?= h($month) ?>)</th><th>Aktion</th></tr>
         <?php foreach ($projects as $project): ?>
             <tr>
                 <td><?= (int) $project['id'] ?></td>
                 <td><?= h($project['name']) ?></td>
                 <td><?= h($project['created_at']) ?></td>
                 <td><?= h($project['last_activity'] ?: '-') ?></td>
+                <td><?= h(format_hours(max(0, ((int) $project['total_minutes']) / 60))) ?></td>
                 <td><a class="btn" href="admin_project_details.php?project_id=<?= (int) $project['id'] ?>">Details</a></td>
             </tr>
         <?php endforeach; ?>

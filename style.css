@@ -42,3 +42,11 @@ th,td{border:1px solid var(--border);padding:8px;font-size:14px;text-align:left}
 
 /* Safari/IOS konsistente Select-Darstellung */
 select{-webkit-appearance:menulist;appearance:menulist;min-height:38px}
+
+@media print{
+  body{max-width:none;margin:0;padding:0;background:#fff;color:#000}
+  header,.flash-success,.flash-error,.btn,button,input,select,textarea{display:none !important}
+  .card{border:none;padding:0;margin:0 0 12px 0}
+  .card:nth-of-type(-n+2){display:none}
+  table,th,td{border:1px solid #999}
+}
