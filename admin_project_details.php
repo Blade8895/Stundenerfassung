@@ -47,6 +47,36 @@ $entryStmt = db()->prepare(
 $entryStmt->execute(['project_id' => $projectId, 'month' => $month]);
 $entries = $entryStmt->fetchAll();
 
+if (($_GET['export'] ?? '') === 'csv') {
+    $safeProject = preg_replace('/[^a-zA-Z0-9_-]+/', '-', (string) $project['name']);
+    $safeProject = trim((string) $safeProject, '-');
+    if ($safeProject === '') {
+        $safeProject = 'baustelle-' . $projectId;
+    }
+
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="baustellenstunden-' . $safeProject . '-' . $month . '.csv"');
+
+    echo "Baustellen-ID;Baustelle;Monat;Datum;Benutzer;Von;Bis;Pause (Minuten);Notiz;Erfasst von;Stunden\n";
+    foreach ($entries as $entry) {
+        $minutes = max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']);
+        $hours = number_format($minutes / 60, 2, ',', '');
+
+        echo (int) $project['id']
+            . ';"' . str_replace('"', '""', $project['name']) . '"'
+            . ';' . $month
+            . ';' . $entry['work_date']
+            . ';"' . str_replace('"', '""', $entry['user_name']) . '"'
+            . ';' . $entry['start_time']
+            . ';' . $entry['end_time']
+            . ';' . (int) $entry['break_minutes']
+            . ';"' . str_replace('"', '""', (string) $entry['notes']) . '"'
+            . ';"' . str_replace('"', '""', (string) ($entry['created_by_name'] ?? '-')) . '"'
+            . ';' . $hours . "\n";
+    }
+    exit;
+}
+
 $totalMinutes = 0;
 foreach ($entries as $entry) {
     $totalMinutes += max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']);
@@ -69,6 +99,7 @@ render_header('Admin - Baustellendetails');
         <input type="hidden" name="user_id" value="<?= h($backParams['user_id']) ?>">
         <div><label>Monat</label><input type="month" name="month" value="<?= h($month) ?>"></div>
         <div style="align-self:end"><button type="submit">Filtern</button></div>
+        <div style="align-self:end"><a class="btn" href="admin_project_details.php?project_id=<?= (int) $projectId ?>&month=<?= h($month) ?>&name=<?= urlencode($backParams['name']) ?>&created_from=<?= urlencode($backParams['created_from']) ?>&created_to=<?= urlencode($backParams['created_to']) ?>&sort=<?= urlencode($backParams['sort']) ?>&user_id=<?= urlencode($backParams['user_id']) ?>&export=csv">CSV Download</a></div>
         <div style="align-self:end"><a class="btn" href="<?= h($backUrl) ?>">Zurück zu Baustellen</a></div>
     </form>
 
