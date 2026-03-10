@@ -211,14 +211,219 @@ function ensureSqlitePrerequisites(dbPath) {
   fs.accessSync(directory, fs.constants.R_OK | fs.constants.W_OK);
 }
 
-function migrateUserRoleConstraint(db) {
-  const usersTable = db.prepare(`
+function getExistingTableSql(db, tableName) {
+  return db.prepare(`
     SELECT sql
     FROM sqlite_master
-    WHERE type = 'table' AND name = 'users'
-  `).get();
+    WHERE type = 'table' AND name = ?
+  `).get(tableName)?.sql || null;
+}
 
-  if (!usersTable?.sql || usersTable.sql.includes("'trainee'")) {
+function hasRoleLiteral(sql, role) {
+  return new RegExp(`['"]${role}['"]`, 'i').test(sql || '');
+}
+
+function hasTraineeRoleConstraint(sql) {
+  return hasRoleLiteral(sql, 'trainee');
+}
+
+function hasDoubleQuotedRoleLiterals(sql) {
+  return /"admin"|"employee"|"trainee"/i.test(sql || '');
+}
+
+function tableExists(sourceDb, tableName) {
+  return !!sourceDb.prepare(`
+    SELECT name
+    FROM sqlite_master
+    WHERE type = 'table' AND name = ?
+  `).get(tableName);
+}
+
+function getTableColumns(sourceDb, tableName) {
+  if (!tableExists(sourceDb, tableName)) return [];
+  return sourceDb.prepare(`PRAGMA table_info(${tableName})`).all().map((column) => column.name);
+}
+
+function selectAs(columns, columnName, fallbackSql) {
+  return columns.includes(columnName)
+    ? `${columnName} AS ${columnName}`
+    : `${fallbackSql} AS ${columnName}`;
+}
+
+function readTableRows(sourceDb, tableName, buildQuery) {
+  if (!tableExists(sourceDb, tableName)) return [];
+  const columns = getTableColumns(sourceDb, tableName);
+  return sourceDb.prepare(buildQuery(columns)).all();
+}
+
+function syncSqliteSequence(db, tableName, rows) {
+  const maxId = rows.reduce((max, row) => Math.max(max, Number(row.id || 0)), 0);
+  if (!maxId) return;
+  db.prepare('DELETE FROM sqlite_sequence WHERE name = ?').run(tableName);
+  db.prepare('INSERT INTO sqlite_sequence(name, seq) VALUES (?, ?)').run(tableName, maxId);
+}
+
+function rebuildSqliteDatabase(dbPath) {
+  const sourceDb = new Database(dbPath, { readonly: true });
+  let exportData;
+
+  try {
+    exportData = {
+      users: readTableRows(sourceDb, 'users', (columns) => `
+        SELECT
+          id,
+          name,
+          email,
+          password_hash,
+          role,
+          ${selectAs(columns, 'active', '1')},
+          ${selectAs(columns, 'created_at', "datetime('now')")}
+        FROM users
+        ORDER BY id
+      `),
+      projects: readTableRows(sourceDb, 'projects', (columns) => `
+        SELECT
+          id,
+          name,
+          ${selectAs(columns, 'active', '1')},
+          ${selectAs(columns, 'created_at', "datetime('now')")}
+        FROM projects
+        ORDER BY id
+      `),
+      userProjects: readTableRows(sourceDb, 'user_projects', () => `
+        SELECT user_id, project_id
+        FROM user_projects
+        ORDER BY user_id, project_id
+      `),
+      timeEntries: readTableRows(sourceDb, 'time_entries', (columns) => `
+        SELECT
+          id,
+          user_id,
+          project_id,
+          work_date,
+          start_time,
+          end_time,
+          ${selectAs(columns, 'break_minutes', '0')},
+          ${selectAs(columns, 'notes', 'NULL')},
+          ${selectAs(columns, 'created_by_user_id', 'user_id')},
+          ${selectAs(columns, 'created_at', "datetime('now')")}
+        FROM time_entries
+        ORDER BY id
+      `),
+    };
+  } finally {
+    sourceDb.close();
+  }
+
+  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');
+  const backupPath = `${dbPath}.bak-${stamp}`;
+  const rebuiltPath = `${dbPath}.rebuilt-${stamp}`;
+  fs.copyFileSync(dbPath, backupPath);
+
+  const rebuiltDb = new Database(rebuiltPath);
+  let rebuildError = null;
+
+  try {
+    rebuiltDb.pragma('foreign_keys = OFF');
+    rebuiltDb.exec(CREATE_USERS_SQL);
+    rebuiltDb.exec(CREATE_PROJECTS_SQL);
+    rebuiltDb.exec(CREATE_USER_PROJECTS_SQL);
+    rebuiltDb.exec(CREATE_TIME_ENTRIES_SQL);
+    rebuiltDb.exec(CREATE_INDEX_SQL);
+
+    const importData = rebuiltDb.transaction(() => {
+      const insertUser = rebuiltDb.prepare(`
+        INSERT INTO users (id, name, email, password_hash, role, active, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      exportData.users.forEach((row) => {
+        insertUser.run(row.id, row.name, row.email, row.password_hash, row.role, row.active, row.created_at);
+      });
+
+      const insertProject = rebuiltDb.prepare(`
+        INSERT INTO projects (id, name, active, created_at)
+        VALUES (?, ?, ?, ?)
+      `);
+      exportData.projects.forEach((row) => {
+        insertProject.run(row.id, row.name, row.active, row.created_at);
+      });
+
+      const insertUserProject = rebuiltDb.prepare(`
+        INSERT INTO user_projects (user_id, project_id)
+        VALUES (?, ?)
+      `);
+      exportData.userProjects.forEach((row) => {
+        insertUserProject.run(row.user_id, row.project_id);
+      });
+
+      const insertTimeEntry = rebuiltDb.prepare(`
+        INSERT INTO time_entries (
+          id, user_id, project_id, work_date, start_time, end_time,
+          break_minutes, notes, created_by_user_id, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      exportData.timeEntries.forEach((row) => {
+        insertTimeEntry.run(
+          row.id,
+          row.user_id,
+          row.project_id,
+          row.work_date,
+          row.start_time,
+          row.end_time,
+          row.break_minutes,
+          row.notes,
+          row.created_by_user_id,
+          row.created_at
+        );
+      });
+
+      syncSqliteSequence(rebuiltDb, 'users', exportData.users);
+      syncSqliteSequence(rebuiltDb, 'projects', exportData.projects);
+      syncSqliteSequence(rebuiltDb, 'time_entries', exportData.timeEntries);
+    });
+
+    importData();
+    rebuiltDb.pragma('foreign_keys = ON');
+  } catch (error) {
+    rebuildError = error;
+  } finally {
+    rebuiltDb.close();
+  }
+
+  if (rebuildError) {
+    if (fs.existsSync(rebuiltPath)) {
+      fs.unlinkSync(rebuiltPath);
+    }
+    throw rebuildError;
+  }
+
+  fs.copyFileSync(rebuiltPath, dbPath);
+  fs.unlinkSync(rebuiltPath);
+  console.warn(`Legacy SQLite schema repaired. Backup created at ${backupPath}`);
+}
+
+function ensureSqliteCompatibility(dbPath) {
+  if (!fs.existsSync(dbPath)) return;
+
+  const inspectionDb = new Database(dbPath, { readonly: true });
+  let usersSql;
+
+  try {
+    usersSql = getExistingTableSql(inspectionDb, 'users');
+  } finally {
+    inspectionDb.close();
+  }
+
+  if (hasDoubleQuotedRoleLiterals(usersSql)) {
+    rebuildSqliteDatabase(dbPath);
+  }
+}
+
+function migrateUserRoleConstraint(db) {
+  const usersSql = getExistingTableSql(db, 'users');
+
+  if (!usersSql || hasTraineeRoleConstraint(usersSql)) {
     return;
   }
 
@@ -270,6 +475,7 @@ function migrateUserRoleConstraint(db) {
 
 function initializeDatabase(dbPath = DEFAULT_DB_PATH) {
   ensureSqlitePrerequisites(dbPath);
+  ensureSqliteCompatibility(dbPath);
 
   const database = new Database(dbPath);
   database.pragma('foreign_keys = ON');
