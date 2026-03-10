@@ -1,9 +1,14 @@
-﻿<!DOCTYPE html>
+﻿<%
+  const resolvedAppName = typeof appName !== 'undefined' ? appName : 'Stundenerfassung';
+  const resolvedTitle = typeof title !== 'undefined' ? title : '';
+  const resolvedTheme = typeof theme !== 'undefined' ? theme : 'light';
+%>
+<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= title ? `${title} | ${appName}` : appName %></title>
+  <title><%= resolvedTitle ? `${resolvedTitle} | ${resolvedAppName}` : resolvedAppName %></title>
   <link rel="stylesheet" href="/app.css" />
 </head>
-<body class="theme-<%= theme || 'light' %>">
+<body class="theme-<%= resolvedTheme %>">
