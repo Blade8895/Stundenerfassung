@@ -1,0 +1,24 @@
+<%- include('layout-top', { title }) %>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="brand">Stundenerfassung</div>
+    <nav>
+      <a href="/dashboard" class="<%= active === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+      <a href="/report" class="<%= active === 'report' ? 'active' : '' %>">Reports</a>
+      <% if (currentUser && currentUser.role === 'admin') { %>
+        <a href="/admin" class="<%= active === 'admin' ? 'active' : '' %>">Administration</a>
+      <% } %>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1><%= heading %></h1>
+        <% if (subtitle) { %><p class="muted"><%= subtitle %></p><% } %>
+      </div>
+      <div class="topbar-actions">
+        <span class="pill"><%= currentUser.name %> · <%= currentUser.role %></span>
+        <form method="post" action="/logout"><button type="submit" class="secondary">Logout</button></form>
+      </div>
+    </header>
+    <section class="content">

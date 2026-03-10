@@ -1,0 +1,57 @@
+<%- include('partials/app-shell-top', { title: 'Dashboard', heading: 'Mein Dashboard', subtitle: 'Erfasse Zeiten und überprüfe deine Auslastung.', active: 'dashboard' }) %>
+<div class="grid two">
+  <div class="card">
+    <div class="card-head"><h2>Neue Buchung</h2></div>
+    <form method="post" action="/entries" class="stack">
+      <label>Projekt
+        <select name="project_id" required>
+          <% projects.forEach((p) => { %>
+            <option value="<%= p.id %>"><%= p.name %></option>
+          <% }) %>
+        </select>
+      </label>
+      <div class="grid two compact">
+        <label>Datum<input type="date" name="work_date" required value="<%= new Date().toISOString().slice(0,10) %>" /></label>
+        <label>Pause (Min)<input type="number" name="break_minutes" min="0" value="0" /></label>
+      </div>
+      <div class="grid two compact">
+        <label>Start<input type="time" name="start_time" required /></label>
+        <label>Ende<input type="time" name="end_time" required /></label>
+      </div>
+      <label>Notiz<textarea name="notes" rows="3" placeholder="Optional"></textarea></label>
+      <button type="submit">Zeit speichern</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Monatssumme</h2>
+      <form method="get"><input type="month" name="month" value="<%= month %>" onchange="this.form.submit()" /></form>
+    </div>
+    <div class="metric"><span><%= totalHours %></span> Stunden</div>
+    <p class="muted">Summierte Nettoarbeitszeit im gewählten Monat.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>Meine Zeiten</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Datum</th><th>Projekt</th><th>Von</th><th>Bis</th><th>Pause</th><th>Notiz</th><th>Erfasst von</th></tr></thead>
+      <tbody>
+      <% entries.forEach((e) => { %>
+        <tr>
+          <td><%= e.work_date %></td>
+          <td><%= e.project_name %></td>
+          <td><%= e.start_time %></td>
+          <td><%= e.end_time %></td>
+          <td><%= e.break_minutes %> min</td>
+          <td><%= e.notes || '—' %></td>
+          <td><%= e.created_by_name %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<%- include('partials/app-shell-bottom') %>

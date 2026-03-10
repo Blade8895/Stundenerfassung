@@ -1,161 +1,44 @@
-# Stundenerfassung (PHP + SQL)
+# Stundenerfassung – Node.js Modern SaaS Edition
 
-Webspace-fähige Zeiterfassung mit:
+Diese Version ist vollständig auf eine moderne Node.js-Webapp umgestellt und nutzt weiterhin dieselbe SQLite-Struktur (`users`, `projects`, `user_projects`, `time_entries`) für volle Kompatibilität mit bestehenden Datenbanken.
 
-- Login + Benutzerverwaltung (Admin/Mitarbeiter)
-- Baustellenverwaltung und Zuweisung pro Benutzer (inkl. Admins)
-- Zeiterfassung mit `von`/`bis`, Pause, Notiz
-- Dashboard mit Monatsfilter und Gesamtstunden
-- Admin kann Stunden für Benutzer nachtragen
-- SQL-Speicherung via PDO (SQLite oder MySQL)
-- Optionaler Light-/Darkmode
+## Tech Stack
 
-## Setup-Anleitung (Schritt für Schritt)
+- Node.js + Express
+- EJS-Templates
+- SQLite über `better-sqlite3`
+- Session-Auth über `express-session`
+- Modernes responsives SaaS-Layout (Sidebar + Topbar + Content)
 
-### 1) Voraussetzungen prüfen
-
-Auf dem Webspace muss verfügbar sein:
-
-- PHP 8.0+ (empfohlen)
-- `PDO` Erweiterung
-- Datenbanktreiber:
-  - entweder `pdo_sqlite` (für SQLite),
-  - oder `pdo_mysql` (für MySQL/MariaDB)
-
-### 2) Dateien hochladen
-
-- Alle Projektdateien in ein Verzeichnis auf dem Webspace kopieren.
-- Falls möglich, dieses Verzeichnis als Webroot verwenden (oder per Domain/Subdomain darauf zeigen).
-
-### 3) `config.php` konfigurieren
-
-Standardmäßig ist SQLite aktiv:
-
-```php
-'dsn' => 'sqlite:' . __DIR__ . '/data/stundenerfassung.sqlite',
-'db_user' => null,
-'db_pass' => null,
-```
-
-Für MySQL/MariaDB stattdessen:
-
-```php
-'dsn' => 'mysql:host=localhost;dbname=stundenerfassung;charset=utf8mb4',
-'db_user' => 'DEIN_DB_USER',
-'db_pass' => 'DEIN_DB_PASSWORT',
-```
-
-### 4) Schreibrechte setzen (wichtig bei SQLite)
-
-Bei SQLite muss das Zielverzeichnis beschreibbar sein:
-
-- Verzeichnis `data/` muss existieren.
-- PHP-Webserver-Benutzer braucht Schreibrechte auf `data/`.
-
-Typischer Linux-Befehl:
+## Start
 
 ```bash
-chmod 775 data
+npm install
+npm start
 ```
 
-### 5) Erst-Setup aufrufen
+App läuft anschließend auf `http://localhost:3000`.
 
-Im Browser öffnen:
+## Setup / Login
 
-- `https://DEINE-DOMAIN/setup.php`
+1. Wenn die DB leer ist: `GET /setup` aufrufen und den ersten Admin anlegen.
+2. Danach über `/login` anmelden.
 
-Dort den ersten Admin anlegen.
+## SQLite-Kompatibilität
 
-### 6) Admin-Masken nutzen
+- Bestehende SQLite-Dateien bleiben nutzbar, solange sie das vorhandene Schema verwenden.
+- Pfad zur Datenbank standardmäßig: `data/stundenerfassung.sqlite`
+- Optional anpassbar über `DB_PATH` Umgebungsvariable.
 
-`Admin` ist jetzt in mehrere eigene Masken getrennt:
+## Features
 
-- `admin.php` → Übersicht
-- `admin_users.php` → Benutzer anlegen
-- `admin_projects.php` → Baustellen anlegen/bearbeiten + Zuweisung + Filter (Name, Eintragungsdatum, letzte Aktivität)
-- `admin_time_entry.php` → Stunden nachtragen und bestehende Einträge bearbeiten
-- `admin_totals.php` → Gesamtstunden pro Mitarbeiter mit Monatsfilter + CSV Export
-- `admin_employee_details.php` → Detailansicht je Mitarbeiter (Baustelle, Notizen, einzelne Buchungen)
+- Login + Session
+- Dashboard mit Monatsfilter und Gesamtsumme
+- Zeiterfassung (Projekt, Datum, Start/Ende, Pause, Notiz)
+- Reports mit strukturierter Tabelle
+- Admin-Bereich für Benutzer, Projekte, Projektzuweisungen und Summen
 
-### 7) Darkmode
+## Hinweise
 
-Im Header kann per `Theme: DARK/LIGHT` umgeschaltet werden.
-Darkmode-Farben:
-
-- Hintergrund: `#0B0D10`
-- Boxen: `#12151B`
-- Text: `#E8ECF1`
-
-## Häufiges Problem: „Die Anfrage kann nicht bearbeitet werden“
-
-Das passiert meist bei einem Serverfehler (HTTP 500). Häufige Ursachen:
-
-1. **SQLite-Verzeichnis nicht beschreibbar**
-2. **PDO-Treiber fehlt**
-3. **Falscher DSN / falsche Zugangsdaten**
-
-Die Anwendung zeigt bei DB-Startfehlern zusätzlich eine konkrete Fehlermeldung mit Hinweisen an.
-
-
-## Mobile-Optimierung
-
-- Für kleine Displays (`<=640px`) wurde ein mobiles Layout ergänzt (Navigation-Umbruch, 1-spaltige Formulare, scrollbare Tabellen), um Überlappungen zu vermeiden.
-- In `Dashboard -> Meine Zeiten` wurde die Spalte `Erfasst von` entfernt.
-
-
-## Regeln für Zeiterfassung
-
-- Mitarbeiter können eigene Zeiten nur für den **heutigen Tag** erfassen (kein rückwirkendes Datum im Mitarbeiter-Dashboard).
-- Rückwirkende Einträge erfolgen über **Admin -> Stunden nachtragen**.
-- Zeitauswahl ist auf **15-Minuten-Schritte** begrenzt (`00`, `15`, `30`, `45`).
-
-
-## MySQL-Tabellen manuell via phpMyAdmin erstellen
-
-Wenn du die Tabellen manuell anlegen willst, kannst du in phpMyAdmin unter SQL folgendes ausführen:
-
-```sql
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(190) NOT NULL,
-    email VARCHAR(190) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'employee') NOT NULL,
-    active TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS projects (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(190) NOT NULL UNIQUE,
-    active TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS user_projects (
-    user_id INT NOT NULL,
-    project_id INT NOT NULL,
-    PRIMARY KEY (user_id, project_id),
-    CONSTRAINT fk_user_projects_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_user_projects_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS time_entries (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    project_id INT NOT NULL,
-    work_date DATE NOT NULL,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
-    break_minutes INT NOT NULL DEFAULT 0,
-    notes TEXT NULL,
-    created_by_user_id INT NOT NULL,
-    created_at DATETIME NOT NULL,
-    CONSTRAINT fk_time_entries_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_time_entries_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    CONSTRAINT fk_time_entries_creator FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_time_entries_user_date (user_id, work_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-```
-
-Hinweis: Die Anwendung legt Tabellen bei leerer Datenbank jetzt auch automatisch an (SQLite und MySQL), sobald die Seite das erste Mal aufgerufen wird.
+- Das alte PHP-System liegt noch im Repository, wird aber nicht mehr für den Betrieb benötigt.
+- Für Produktion: `SESSION_SECRET` setzen.

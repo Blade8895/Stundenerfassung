@@ -1,0 +1,27 @@
+<%- include('partials/app-shell-top', { title: 'Reports', heading: 'Zeitauswertung', subtitle: 'Strukturierte Übersicht mit Fokus auf Transparenz.', active: 'report' }) %>
+<div class="card">
+  <div class="card-head">
+    <h2>Monatsreport</h2>
+    <form method="get"><input type="month" name="month" value="<%= month %>" onchange="this.form.submit()" /></form>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Datum</th><th>Mitarbeiter</th><th>Projekt</th><th>Von</th><th>Bis</th><th>Pause</th><th>Dauer</th><th>Notiz</th></tr></thead>
+      <tbody>
+      <% rows.forEach((r) => { %>
+        <tr>
+          <td><%= r.work_date %></td>
+          <td><%= r.employee %></td>
+          <td><%= r.project %></td>
+          <td><%= r.start_time %></td>
+          <td><%= r.end_time %></td>
+          <td><%= r.break_minutes %> min</td>
+          <td><strong><%= r.duration_hours %> h</strong></td>
+          <td><%= r.notes || '—' %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<%- include('partials/app-shell-bottom') %>

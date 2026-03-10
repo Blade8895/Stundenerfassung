@@ -1,0 +1,13 @@
+<%- include('partials/layout-top', { title: 'Setup · Stundenerfassung' }) %>
+<div class="auth-shell">
+  <form method="post" class="card auth-card">
+    <h1>Initiales Setup</h1>
+    <p class="muted">Lege den ersten Administrator an.</p>
+    <% if (error) { %><p class="error"><%= error %></p><% } %>
+    <label>Name<input type="text" name="name" required /></label>
+    <label>E-Mail<input type="email" name="email" required /></label>
+    <label>Passwort<input type="password" name="password" required /></label>
+    <button type="submit">Admin anlegen</button>
+  </form>
+</div>
+<%- include('partials/layout-bottom') %>

@@ -1,0 +1,12 @@
+<%- include('partials/layout-top', { title: 'Login · Stundenerfassung' }) %>
+<div class="auth-shell">
+  <form method="post" class="card auth-card">
+    <h1>Willkommen zurück</h1>
+    <p class="muted">Bitte melde dich mit deinem Firmenkonto an.</p>
+    <% if (error) { %><p class="error"><%= error %></p><% } %>
+    <label>E-Mail<input type="email" name="email" required /></label>
+    <label>Passwort<input type="password" name="password" required /></label>
+    <button type="submit">Anmelden</button>
+  </form>
+</div>
+<%- include('partials/layout-bottom') %>
