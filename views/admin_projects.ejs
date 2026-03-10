@@ -1,0 +1,133 @@
+﻿<%- include('partials/app-shell-top', {
+  title,
+  heading: 'Projektverwaltung',
+  subtitle: 'Projekte anlegen, umbenennen, filtern und Benutzern zuweisen.',
+  active: 'projects'
+}) %>
+
+<div class="grid two">
+  <section class="card">
+    <div class="card-head">
+      <h2>Projekt anlegen oder umbenennen</h2>
+    </div>
+    <form method="post" action="/admin/projects/save" class="stack">
+      <input type="hidden" name="csrf_token" value="<%= csrfToken %>" />
+      <label>Projekt-ID fuer Umbenennung (optional)
+        <input type="number" name="project_id" min="1" />
+      </label>
+      <label>Name
+        <input type="text" name="name" required />
+      </label>
+      <button type="submit">Projekt speichern</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Projektzuweisungen</h2>
+    </div>
+    <% if (users.length) { %>
+      <form method="get" action="/admin/projects" class="stack compact">
+        <label>Benutzer
+          <select name="user_id" onchange="this.form.submit()">
+            <% users.forEach((user) => { %>
+              <option value="<%= user.id %>" <%= user.id === selectedAssignmentUserId ? 'selected' : '' %>>
+                <%= user.name %> (<%= user.role_label %>)
+              </option>
+            <% }) %>
+          </select>
+        </label>
+        <input type="hidden" name="name" value="<%= filters.name %>" />
+        <input type="hidden" name="created_from" value="<%= filters.created_from %>" />
+        <input type="hidden" name="created_to" value="<%= filters.created_to %>" />
+        <input type="hidden" name="sort" value="<%= filters.sort %>" />
+      </form>
+
+      <form method="post" action="/admin/assignments" class="stack">
+        <input type="hidden" name="csrf_token" value="<%= csrfToken %>" />
+        <input type="hidden" name="user_id" value="<%= selectedAssignmentUserId %>" />
+        <div class="checkbox-grid">
+          <% projects.forEach((project) => { %>
+            <label class="checkbox-card">
+              <input type="checkbox" name="project_ids" value="<%= project.id %>" <%= assignedProjectIds.has(project.id) ? 'checked' : '' %> />
+              <span><strong>#<%= project.id %></strong> <%= project.name %></span>
+            </label>
+          <% }) %>
+        </div>
+        <button type="submit">Zuweisungen speichern</button>
+      </form>
+    <% } else { %>
+      <p class="empty-state">Es gibt noch keine aktiven Benutzer.</p>
+    <% } %>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Projektverzeichnis</h2>
+  </div>
+  <form method="get" action="/admin/projects" class="filter-grid">
+    <label>Name enthaelt
+      <input type="text" name="name" value="<%= filters.name %>" />
+    </label>
+    <label>Erstellt ab
+      <input type="date" name="created_from" value="<%= filters.created_from %>" />
+    </label>
+    <label>Erstellt bis
+      <input type="date" name="created_to" value="<%= filters.created_to %>" />
+    </label>
+    <label>Sortierung
+      <select name="sort">
+        <% sortOptions.forEach((option) => { %>
+          <option value="<%= option.value %>" <%= option.value === filters.sort ? 'selected' : '' %>><%= option.label %></option>
+        <% }) %>
+      </select>
+    </label>
+    <input type="hidden" name="user_id" value="<%= selectedAssignmentUserId %>" />
+    <button type="submit">Filter anwenden</button>
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Erstellt</th>
+          <th>Letzte Aktivitaet</th>
+          <th>Zuweisungen</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!projects.length) { %>
+          <tr>
+            <td colspan="6" class="empty-state">Keine Projekte fuer diese Filter gefunden.</td>
+          </tr>
+        <% } %>
+        <% projects.forEach((project) => { %>
+          <tr>
+            <td><%= project.id %></td>
+            <td><%= project.name %></td>
+            <td><%= project.created_at.slice(0, 10) %></td>
+            <td><%= project.last_activity || 'Noch keine Buchung' %></td>
+            <td><%= project.assigned_user_count %></td>
+            <td>
+              <a href="/admin/project-details<%= buildQuery({
+                project_id: project.id,
+                month: today.slice(0, 7),
+                name: filters.name,
+                created_from: filters.created_from,
+                created_to: filters.created_to,
+                sort: filters.sort,
+                user_id: selectedAssignmentUserId
+              }) %>">Oeffnen</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('partials/app-shell-bottom') %>

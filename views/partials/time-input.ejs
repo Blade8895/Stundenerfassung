@@ -1,0 +1,21 @@
+﻿<%
+  const timeValue = (value || '00:00').split(':');
+  const selectedHour = timeValue[0] || '00';
+  const selectedMinute = timeValue[1] || '00';
+%>
+<label><%= label %>
+  <div class="time-select" data-time-group>
+    <input type="hidden" name="<%= name %>" value="<%= value || '00:00' %>" data-time-hidden />
+    <select data-time-hour>
+      <% hours.forEach((hour) => { %>
+        <option value="<%= hour %>" <%= hour === selectedHour ? 'selected' : '' %>><%= hour %></option>
+      <% }) %>
+    </select>
+    <span>:</span>
+    <select data-time-minute>
+      <% quarterMinutes.forEach((minute) => { %>
+        <option value="<%= minute %>" <%= minute === selectedMinute ? 'selected' : '' %>><%= minute %></option>
+      <% }) %>
+    </select>
+  </div>
+</label>

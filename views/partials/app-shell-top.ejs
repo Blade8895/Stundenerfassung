@@ -1,12 +1,20 @@
-<%- include('layout-top', { title }) %>
+﻿<%- include('layout-top', { title }) %>
+<%
+  const nextTheme = theme === 'dark' ? 'light' : 'dark';
+  const nextThemeLabel = theme === 'dark' ? 'Hell' : 'Dunkel';
+%>
 <div class="app-layout">
   <aside class="sidebar">
-    <div class="brand">Stundenerfassung</div>
-    <nav>
+    <div class="brand"><%= appName %></div>
+    <nav class="nav-links">
       <a href="/dashboard" class="<%= active === 'dashboard' ? 'active' : '' %>">Dashboard</a>
-      <a href="/report" class="<%= active === 'report' ? 'active' : '' %>">Reports</a>
+      <a href="/user_settings" class="<%= active === 'settings' ? 'active' : '' %>">Profil</a>
       <% if (currentUser && currentUser.role === 'admin') { %>
-        <a href="/admin" class="<%= active === 'admin' ? 'active' : '' %>">Administration</a>
+        <a href="/admin" class="<%= active === 'admin' ? 'active' : '' %>">Admin Start</a>
+        <a href="/admin/users" class="<%= active === 'users' ? 'active' : '' %>">Benutzer</a>
+        <a href="/admin/projects" class="<%= active === 'projects' ? 'active' : '' %>">Projekte</a>
+        <a href="/admin/time-entries" class="<%= active === 'time' ? 'active' : '' %>">Zeitbuchungen</a>
+        <a href="/admin/totals" class="<%= active === 'totals' ? 'active' : '' %>">Summen</a>
       <% } %>
     </nav>
   </aside>
@@ -17,8 +25,12 @@
         <% if (subtitle) { %><p class="muted"><%= subtitle %></p><% } %>
       </div>
       <div class="topbar-actions">
-        <span class="pill"><%= currentUser.name %> · <%= currentUser.role %></span>
-        <form method="post" action="/logout"><button type="submit" class="secondary">Logout</button></form>
+        <% if (currentUser) { %>
+          <span class="pill"><%= currentUser.name %> · <%= currentUser.role_label %></span>
+        <% } %>
+        <a class="button secondary" href="/theme_toggle?theme=<%= nextTheme %>&return_to=<%= encodeURIComponent(currentUrl) %>"><%= nextThemeLabel %> anzeigen</a>
+        <a class="button secondary" href="/logout">Logout</a>
       </div>
     </header>
     <section class="content">
+      <%- include('flashes') %>

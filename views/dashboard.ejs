@@ -1,57 +1,95 @@
-<%- include('partials/app-shell-top', { title: 'Dashboard', heading: 'Mein Dashboard', subtitle: 'Erfasse Zeiten und überprüfe deine Auslastung.', active: 'dashboard' }) %>
-<div class="grid two">
-  <div class="card">
-    <div class="card-head"><h2>Neue Buchung</h2></div>
-    <form method="post" action="/entries" class="stack">
-      <label>Projekt
-        <select name="project_id" required>
-          <% projects.forEach((p) => { %>
-            <option value="<%= p.id %>"><%= p.name %></option>
-          <% }) %>
-        </select>
-      </label>
-      <div class="grid two compact">
-        <label>Datum<input type="date" name="work_date" required value="<%= new Date().toISOString().slice(0,10) %>" /></label>
-        <label>Pause (Min)<input type="number" name="break_minutes" min="0" value="0" /></label>
-      </div>
-      <div class="grid two compact">
-        <label>Start<input type="time" name="start_time" required /></label>
-        <label>Ende<input type="time" name="end_time" required /></label>
-      </div>
-      <label>Notiz<textarea name="notes" rows="3" placeholder="Optional"></textarea></label>
-      <button type="submit">Zeit speichern</button>
-    </form>
-  </div>
+﻿<%- include('partials/app-shell-top', {
+  title,
+  heading: 'Mein Dashboard',
+  subtitle: 'Zeiten fuer den aktuellen Tag erfassen und Monatshistorie einsehen.',
+  active: 'dashboard'
+}) %>
 
-  <div class="card">
+<div class="grid two">
+  <section class="card">
+    <div class="card-head">
+      <h2>Neue Buchung</h2>
+    </div>
+    <% if (!projects.length) { %>
+      <p class="empty-state">Dir sind aktuell keine aktiven Projekte zugewiesen. Bitte einen Admin kontaktieren.</p>
+    <% } else { %>
+      <form method="post" action="/entries" class="stack">
+        <input type="hidden" name="csrf_token" value="<%= csrfToken %>" />
+        <input type="hidden" name="work_date" value="<%= today %>" />
+        <p class="field-static">Buchungsdatum: <strong><%= today %></strong></p>
+        <label>Projekt
+          <select name="project_id" required>
+            <% projects.forEach((project) => { %>
+              <option value="<%= project.id %>" <%= Number(form.project_id) === project.id ? 'selected' : '' %>><%= project.name %></option>
+            <% }) %>
+          </select>
+        </label>
+        <div class="grid two compact">
+          <%- include('partials/time-input', { label: 'Start', name: 'start_time', value: form.start_time }) %>
+          <%- include('partials/time-input', { label: 'Ende', name: 'end_time', value: form.end_time }) %>
+        </div>
+        <label>Pause (Minuten)
+          <input type="number" name="break_minutes" min="0" value="<%= form.break_minutes %>" required />
+        </label>
+        <label>Notiz
+          <textarea name="notes" rows="3" placeholder="Optional"><%= form.notes || '' %></textarea>
+        </label>
+        <button type="submit">Zeit speichern</button>
+      </form>
+    <% } %>
+  </section>
+
+  <section class="card">
     <div class="card-head">
       <h2>Monatssumme</h2>
-      <form method="get"><input type="month" name="month" value="<%= month %>" onchange="this.form.submit()" /></form>
+      <form method="get" action="/dashboard">
+        <input type="month" name="month" value="<%= month %>" onchange="this.form.submit()" />
+      </form>
     </div>
     <div class="metric"><span><%= totalHours %></span> Stunden</div>
-    <p class="muted">Summierte Nettoarbeitszeit im gewählten Monat.</p>
-  </div>
+    <p class="muted">Summierte Nettoarbeitszeit im ausgewaehlten Monat.</p>
+  </section>
 </div>
 
-<div class="card">
-  <div class="card-head"><h2>Meine Zeiten</h2></div>
+<section class="card">
+  <div class="card-head">
+    <h2>Meine Zeitbuchungen</h2>
+  </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Datum</th><th>Projekt</th><th>Von</th><th>Bis</th><th>Pause</th><th>Notiz</th><th>Erfasst von</th></tr></thead>
-      <tbody>
-      <% entries.forEach((e) => { %>
+      <thead>
         <tr>
-          <td><%= e.work_date %></td>
-          <td><%= e.project_name %></td>
-          <td><%= e.start_time %></td>
-          <td><%= e.end_time %></td>
-          <td><%= e.break_minutes %> min</td>
-          <td><%= e.notes || '—' %></td>
-          <td><%= e.created_by_name %></td>
+          <th>Datum</th>
+          <th>Projekt</th>
+          <th>Start</th>
+          <th>Ende</th>
+          <th>Pause</th>
+          <th>Stunden</th>
+          <th>Erfasst von</th>
+          <th>Notiz</th>
         </tr>
-      <% }) %>
+      </thead>
+      <tbody>
+        <% if (!entries.length) { %>
+          <tr>
+            <td colspan="8" class="empty-state">Keine Zeitbuchungen fuer diesen Monat vorhanden.</td>
+          </tr>
+        <% } %>
+        <% entries.forEach((entry) => { %>
+          <tr>
+            <td><%= entry.work_date %></td>
+            <td><%= entry.project_name %></td>
+            <td><%= entry.start_time %></td>
+            <td><%= entry.end_time %></td>
+            <td><%= entry.break_minutes %> min</td>
+            <td><%= entry.duration_hours %></td>
+            <td><%= entry.created_by_name %></td>
+            <td><%= entry.notes || '-' %></td>
+          </tr>
+        <% }) %>
       </tbody>
     </table>
   </div>
-</div>
+</section>
+
 <%- include('partials/app-shell-bottom') %>

@@ -1,2 +1,18 @@
+﻿<script>
+  document.querySelectorAll('[data-time-group]').forEach((group) => {
+    const hidden = group.querySelector('[data-time-hidden]');
+    const hour = group.querySelector('[data-time-hour]');
+    const minute = group.querySelector('[data-time-minute]');
+    if (!hidden || !hour || !minute) return;
+
+    const sync = () => {
+      hidden.value = `${hour.value}:${minute.value}`;
+    };
+
+    hour.addEventListener('change', sync);
+    minute.addEventListener('change', sync);
+    sync();
+  });
+</script>
 </body>
 </html>

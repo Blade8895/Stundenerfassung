@@ -1,0 +1,58 @@
+﻿<%- include('partials/app-shell-top', {
+  title,
+  heading: 'Monatssummen',
+  subtitle: 'Gebuchte Stunden aller aktiven Benutzer im gewaehlten Monat.',
+  active: 'totals'
+}) %>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Filter und Export</h2>
+  </div>
+  <form method="get" action="/admin/totals" class="filter-grid">
+    <label>Monat
+      <input type="month" name="month" value="<%= month %>" />
+    </label>
+    <button type="submit">Aktualisieren</button>
+    <a class="button secondary" href="/admin/totals<%= buildQuery({ month, export: 'csv' }) %>">CSV aller Benutzer</a>
+  </form>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Monatliche Gesamtstunden</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>E-Mail</th>
+          <th>Rolle</th>
+          <th>Stunden</th>
+          <th>Details</th>
+          <th>CSV</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!totalRows.length) { %>
+          <tr>
+            <td colspan="6" class="empty-state">Keine aktiven Benutzer vorhanden.</td>
+          </tr>
+        <% } %>
+        <% totalRows.forEach((row) => { %>
+          <tr>
+            <td><%= row.name %></td>
+            <td><%= row.email %></td>
+            <td><%= row.role_label %></td>
+            <td><strong><%= row.total_hours %></strong></td>
+            <td><a href="/admin/employee-details<%= buildQuery({ user_id: row.id, month }) %>">Oeffnen</a></td>
+            <td><a href="/admin/totals<%= buildQuery({ month, export: 'user_csv', user_id: row.id }) %>">CSV</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('partials/app-shell-bottom') %>

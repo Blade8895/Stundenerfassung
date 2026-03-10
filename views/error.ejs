@@ -1,9 +1,18 @@
-<%- include('partials/layout-top', { title: 'Fehler' }) %>
+﻿<%- include('partials/layout-top', { title }) %>
 <div class="auth-shell">
-  <div class="card auth-card">
-    <h1>Fehler</h1>
+  <div class="card auth-card stack">
+    <h1><%= heading %></h1>
     <p><%= message %></p>
-    <a href="/dashboard">Zurück</a>
+    <% if (details && details.length) { %>
+      <ul class="detail-list">
+        <% details.forEach((detail) => { %>
+          <li><%= detail %></li>
+        <% }) %>
+      </ul>
+    <% } %>
+    <% if (backLink) { %>
+      <a class="button secondary" href="<%= backLink %>">Zurueck</a>
+    <% } %>
   </div>
 </div>
 <%- include('partials/layout-bottom') %>

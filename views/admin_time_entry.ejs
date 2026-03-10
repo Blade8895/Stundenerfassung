@@ -1,0 +1,151 @@
+﻿<%- include('partials/app-shell-top', {
+  title,
+  heading: 'Zeitbuchungen verwalten',
+  subtitle: 'Rueckwirkende Eintraege anlegen, bearbeiten und pruefen.',
+  active: 'time'
+}) %>
+
+<div class="grid two">
+  <section class="card">
+    <div class="card-head">
+      <h2><%= editEntry ? 'Buchung bearbeiten' : 'Neue Buchung' %></h2>
+    </div>
+    <% if (!activeUsers.length) { %>
+      <p class="empty-state">Es stehen keine aktiven Benutzer zur Verfuegung.</p>
+    <% } else { %>
+      <form method="get" action="/admin/time-entries" class="stack compact">
+        <label>Benutzer fuer Formular
+          <select name="form_user_id" onchange="this.form.submit()">
+            <% activeUsers.forEach((user) => { %>
+              <option value="<%= user.id %>" <%= user.id === formUserId ? 'selected' : '' %>>
+                <%= user.name %> (<%= user.role_label %>)
+              </option>
+            <% }) %>
+          </select>
+        </label>
+        <input type="hidden" name="filter_month" value="<%= filterMonth %>" />
+        <input type="hidden" name="filter_user_id" value="<%= filterUserId || '' %>" />
+      </form>
+
+      <form method="post" action="<%= editEntry ? '/admin/time-entries/update' : '/entries' %>" class="stack">
+        <input type="hidden" name="csrf_token" value="<%= csrfToken %>" />
+        <% if (editEntry) { %>
+          <input type="hidden" name="entry_id" value="<%= editEntry.id %>" />
+          <input type="hidden" name="filter_month" value="<%= filterMonth %>" />
+          <input type="hidden" name="filter_user_id" value="<%= filterUserId || '' %>" />
+        <% } %>
+        <label>Benutzer
+          <select name="user_id" required>
+            <% activeUsers.forEach((user) => { %>
+              <option value="<%= user.id %>" <%= user.id === Number(form.user_id) ? 'selected' : '' %>>
+                <%= user.name %> (<%= user.role_label %>)
+              </option>
+            <% }) %>
+          </select>
+        </label>
+        <label>Projekt
+          <select name="project_id" required>
+            <% formProjects.forEach((project) => { %>
+              <option value="<%= project.id %>" <%= project.id === Number(form.project_id) ? 'selected' : '' %>><%= project.name %></option>
+            <% }) %>
+          </select>
+        </label>
+        <div class="grid two compact">
+          <label>Datum
+            <input type="date" name="work_date" value="<%= form.work_date %>" required />
+          </label>
+          <label>Pause (Minuten)
+            <input type="number" name="break_minutes" min="0" value="<%= form.break_minutes %>" required />
+          </label>
+        </div>
+        <div class="grid two compact">
+          <%- include('partials/time-input', { label: 'Start', name: 'start_time', value: form.start_time }) %>
+          <%- include('partials/time-input', { label: 'Ende', name: 'end_time', value: form.end_time }) %>
+        </div>
+        <label>Notiz
+          <textarea name="notes" rows="3" placeholder="Optional"><%= form.notes || '' %></textarea>
+        </label>
+        <div class="actions">
+          <button type="submit"><%= editEntry ? 'Aenderungen speichern' : 'Buchung anlegen' %></button>
+          <% if (editEntry) { %>
+            <a class="button secondary" href="/admin/time-entries<%= reviewQuery %>">Bearbeitung abbrechen</a>
+          <% } %>
+        </div>
+      </form>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Pruefliste</h2>
+    </div>
+    <form method="get" action="/admin/time-entries" class="filter-grid">
+      <label>Monat
+        <input type="month" name="filter_month" value="<%= filterMonth %>" />
+      </label>
+      <label>Benutzer
+        <select name="filter_user_id">
+          <option value="">Alle Benutzer</option>
+          <% activeUsers.forEach((user) => { %>
+            <option value="<%= user.id %>" <%= user.id === filterUserId ? 'selected' : '' %>><%= user.name %></option>
+          <% }) %>
+        </select>
+      </label>
+      <input type="hidden" name="form_user_id" value="<%= formUserId || '' %>" />
+      <button type="submit">Liste laden</button>
+    </form>
+    <p class="muted">Es werden maximal 200 Eintraege fuer den gewaehlten Zeitraum angezeigt.</p>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Vorhandene Zeitbuchungen</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Benutzer</th>
+          <th>Projekt</th>
+          <th>Start</th>
+          <th>Ende</th>
+          <th>Pause</th>
+          <th>Stunden</th>
+          <th>Notiz</th>
+          <th>Aktion</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!reviewEntries.length) { %>
+          <tr>
+            <td colspan="9" class="empty-state">Keine Zeitbuchungen fuer diesen Filter gefunden.</td>
+          </tr>
+        <% } %>
+        <% reviewEntries.forEach((entry) => { %>
+          <tr>
+            <td><%= entry.work_date %></td>
+            <td><%= entry.user_name %></td>
+            <td><%= entry.project_name %></td>
+            <td><%= entry.start_time %></td>
+            <td><%= entry.end_time %></td>
+            <td><%= entry.break_minutes %> min</td>
+            <td><%= entry.duration_hours %></td>
+            <td><%= entry.notes || '-' %></td>
+            <td>
+              <a href="/admin/time-entries<%= buildQuery({
+                entry_id: entry.id,
+                filter_month: filterMonth,
+                filter_user_id: filterUserId,
+                form_user_id: entry.user_id
+              }) %>">Bearbeiten</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('partials/app-shell-bottom') %>

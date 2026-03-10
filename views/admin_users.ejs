@@ -1,0 +1,79 @@
+﻿<%- include('partials/app-shell-top', {
+  title,
+  heading: 'Benutzerverwaltung',
+  subtitle: 'Admins, Mitarbeiter und Azubis verwalten.',
+  active: 'users'
+}) %>
+
+<div class="grid two">
+  <section class="card">
+    <div class="card-head">
+      <h2>Neuen Benutzer anlegen</h2>
+    </div>
+    <form method="post" action="/admin/users/save" class="stack">
+      <input type="hidden" name="csrf_token" value="<%= csrfToken %>" />
+      <label>Name
+        <input type="text" name="name" required />
+      </label>
+      <label>E-Mail
+        <input type="email" name="email" required />
+      </label>
+      <label>Passwort
+        <input type="password" name="password" required minlength="8" />
+      </label>
+      <label>Rolle
+        <select name="role" required>
+          <% roles.forEach((role) => { %>
+            <option value="<%= role %>"><%= roleLabel(role) %></option>
+          <% }) %>
+        </select>
+      </label>
+      <button type="submit">Benutzer speichern</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Bestehende Benutzer</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>E-Mail</th>
+            <th>Rolle</th>
+            <th>Status</th>
+            <th>Aktion</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach((user) => { %>
+            <tr>
+              <td><input form="user-<%= user.id %>" type="text" name="name" value="<%= user.name %>" required /></td>
+              <td><input form="user-<%= user.id %>" type="email" name="email" value="<%= user.email %>" required /></td>
+              <td>
+                <select form="user-<%= user.id %>" name="role" required>
+                  <% roles.forEach((role) => { %>
+                    <option value="<%= role %>" <%= role === user.role ? 'selected' : '' %>><%= roleLabel(role) %></option>
+                  <% }) %>
+                </select>
+              </td>
+              <td><span class="badge <%= user.active ? 'success' : 'muted' %>"><%= user.active ? 'Aktiv' : 'Inaktiv' %></span></td>
+              <td>
+                <form id="user-<%= user.id %>" method="post" action="/admin/users/update" class="stack compact">
+                  <input type="hidden" name="csrf_token" value="<%= csrfToken %>" />
+                  <input type="hidden" name="user_id" value="<%= user.id %>" />
+                  <input type="password" name="password" placeholder="Neues Passwort (optional)" minlength="8" />
+                  <button type="submit">Aktualisieren</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<%- include('partials/app-shell-bottom') %>

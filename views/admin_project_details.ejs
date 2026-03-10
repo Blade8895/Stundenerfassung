@@ -1,0 +1,86 @@
+﻿<%- include('partials/app-shell-top', {
+  title,
+  heading: 'Projektdetails',
+  subtitle: 'Monatliche Detailansicht aller Buchungen fuer ein Projekt.',
+  active: 'projects'
+}) %>
+
+<div class="grid two">
+  <section class="card">
+    <div class="card-head">
+      <h2>Projekt</h2>
+    </div>
+    <dl class="meta-list">
+      <div>
+        <dt>Name</dt>
+        <dd><%= project.name %></dd>
+      </div>
+      <div>
+        <dt>Projekt-ID</dt>
+        <dd><%= project.id %></dd>
+      </div>
+      <div>
+        <dt>Monatssumme</dt>
+        <dd><strong><%= totalHours %> Stunden</strong></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Monat und Export</h2>
+    </div>
+    <form method="get" action="/admin/project-details" class="filter-grid">
+      <input type="hidden" name="project_id" value="<%= project.id %>" />
+      <label>Monat
+        <input type="month" name="month" value="<%= month %>" />
+      </label>
+      <button type="submit">Aktualisieren</button>
+      <a class="button secondary" href="/admin/project-details<%= buildQuery({ project_id: project.id, month, export: 'csv' }) %>">CSV exportieren</a>
+      <a class="button secondary" href="/admin/projects<%= backQuery %>">Zurueck zur Projektliste</a>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Buchungen</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Mitarbeiter</th>
+          <th>Start</th>
+          <th>Ende</th>
+          <th>Pause</th>
+          <th>Stunden</th>
+          <th>Erfasst von</th>
+          <th>Notiz</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!entries.length) { %>
+          <tr>
+            <td colspan="8" class="empty-state">Keine Buchungen fuer diesen Monat vorhanden.</td>
+          </tr>
+        <% } %>
+        <% entries.forEach((entry) => { %>
+          <tr>
+            <td><%= entry.work_date %></td>
+            <td><%= entry.user_name %></td>
+            <td><%= entry.start_time %></td>
+            <td><%= entry.end_time %></td>
+            <td><%= entry.break_minutes %> min</td>
+            <td><%= entry.duration_hours %></td>
+            <td><%= entry.created_by_name %></td>
+            <td><%= entry.notes || '-' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('partials/app-shell-bottom') %>

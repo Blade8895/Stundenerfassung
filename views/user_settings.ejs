@@ -1,0 +1,49 @@
+﻿<%- include('partials/app-shell-top', {
+  title,
+  heading: 'Profil',
+  subtitle: 'Persoenliche Daten einsehen und Passwort aendern.',
+  active: 'settings'
+}) %>
+
+<div class="grid two">
+  <section class="card">
+    <div class="card-head">
+      <h2>Mein Konto</h2>
+    </div>
+    <dl class="meta-list">
+      <div>
+        <dt>Name</dt>
+        <dd><%= user.name %></dd>
+      </div>
+      <div>
+        <dt>E-Mail</dt>
+        <dd><%= user.email %></dd>
+      </div>
+      <div>
+        <dt>Rolle</dt>
+        <dd><%= roleLabel(user.role) %></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Passwort aendern</h2>
+    </div>
+    <form method="post" action="/user_change_password" class="stack">
+      <input type="hidden" name="csrf_token" value="<%= csrfToken %>" />
+      <label>Aktuelles Passwort
+        <input type="password" name="current_password" required />
+      </label>
+      <label>Neues Passwort
+        <input type="password" name="new_password" required minlength="8" />
+      </label>
+      <label>Neues Passwort bestaetigen
+        <input type="password" name="confirm_password" required minlength="8" />
+      </label>
+      <button type="submit">Passwort speichern</button>
+    </form>
+  </section>
+</div>
+
+<%- include('partials/app-shell-bottom') %>
