@@ -45,8 +45,9 @@ select{-webkit-appearance:menulist;appearance:menulist;min-height:38px}
 
 .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .calendar-weekday{font-weight:bold;font-size:13px;text-align:center;padding:6px 4px;color:var(--muted)}
-.calendar-day{min-height:62px;border:1px solid var(--border);border-radius:8px;padding:6px;background:var(--input);display:flex;align-items:flex-start;justify-content:flex-end}
-.calendar-day-number{font-size:13px;font-weight:bold}
+.calendar-day{min-height:28px;border:1px solid var(--border);border-radius:6px;padding:4px 6px;background:var(--input);display:flex;align-items:center;justify-content:flex-end}
+.calendar-day-number{font-size:13px;font-weight:bold;color:var(--text);line-height:1}
 .calendar-day--outside{opacity:.45}
 .calendar-day--has-entry{background:#daf4df;border-color:#89d697}
 .calendar-day--missing-entry{background:#fce3e2;border-color:#e58d87}
+.calendar-day--has-entry .calendar-day-number,.calendar-day--missing-entry .calendar-day-number{color:#111}
