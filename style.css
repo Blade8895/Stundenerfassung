@@ -56,3 +56,6 @@ select{-webkit-appearance:menulist;appearance:menulist;min-height:38px}
 .project-assignment-card{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;background:var(--input);margin:0;transition:background-color .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease}
 .project-assignment-card.is-selected{background:#7fdf97;border-color:#2f9d52;color:#000;box-shadow:0 0 0 2px rgba(47,157,82,.15)}
 .project-assignment-checkbox{width:auto;margin:0}
+
+.billing-cut-row td{background:#fff2a8;border-color:#e0be3b;font-weight:bold;color:#4a3900}
+body.theme-dark .billing-cut-row td{background:#574800;border-color:#a98920;color:#fff8cf}
