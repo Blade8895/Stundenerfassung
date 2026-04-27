@@ -280,6 +280,17 @@ function migrate(PDO $pdo): void
                 CONSTRAINT fk_time_entries_creator FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
                 INDEX idx_time_entries_user_date (user_id, work_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+            'CREATE TABLE IF NOT EXISTS project_billing_cuts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                project_id INT NOT NULL,
+                cutoff_from_date DATE NOT NULL,
+                invoice_number VARCHAR(190) NOT NULL,
+                created_at DATETIME NOT NULL,
+                created_by_user_id INT NOT NULL,
+                CONSTRAINT fk_project_billing_cuts_project FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                CONSTRAINT fk_project_billing_cuts_creator FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_project_billing_cuts_project_date (project_id, cutoff_from_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
         ];
     } else {
         $queries = [
@@ -317,6 +328,16 @@ function migrate(PDO $pdo): void
                 created_by_user_id INTEGER NOT NULL,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+            )',
+            'CREATE TABLE IF NOT EXISTS project_billing_cuts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                cutoff_from_date TEXT NOT NULL,
+                invoice_number TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                created_by_user_id INTEGER NOT NULL,
                 FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
             )',

@@ -33,6 +33,36 @@ if (!$project) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
+
+    $cutoffFromDate = trim($_POST['cutoff_from_date'] ?? '');
+    $invoiceNumber = trim($_POST['invoice_number'] ?? '');
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $cutoffFromDate)) {
+        flash('error', 'Bitte ein gültiges Schnitt-Datum (JJJJ-MM-TT) angeben.');
+    } elseif ($invoiceNumber === '') {
+        flash('error', 'Bitte eine Rechnungsnummer angeben.');
+    } else {
+        $cutStmt = db()->prepare(
+            'INSERT INTO project_billing_cuts (project_id, cutoff_from_date, invoice_number, created_at, created_by_user_id)
+             VALUES (:project_id, :cutoff_from_date, :invoice_number, :created_at, :created_by_user_id)'
+        );
+        $cutStmt->execute([
+            'project_id' => $projectId,
+            'cutoff_from_date' => $cutoffFromDate,
+            'invoice_number' => $invoiceNumber,
+            'created_at' => now(),
+            'created_by_user_id' => (int) current_user()['id'],
+        ]);
+        flash('success', 'Abrechnungs-Schnitt wurde gespeichert.');
+    }
+
+    $redirectQuery = http_build_query(array_merge($backParams, ['project_id' => $projectId, 'month' => $month]));
+    header('Location: admin_project_details.php?' . $redirectQuery);
+    exit;
+}
+
 $entryStmt = db()->prepare(
     'SELECT te.work_date, te.start_time, te.end_time, te.break_minutes, te.notes,
             u.name AS user_name,
@@ -46,6 +76,22 @@ $entryStmt = db()->prepare(
 );
 $entryStmt->execute(['project_id' => $projectId, 'month' => $month]);
 $entries = $entryStmt->fetchAll();
+
+$cutStmt = db()->prepare(
+    'SELECT pbc.id, pbc.cutoff_from_date, pbc.invoice_number, pbc.created_at, u.name AS created_by_name
+     FROM project_billing_cuts pbc
+     INNER JOIN users u ON u.id = pbc.created_by_user_id
+     WHERE pbc.project_id = :project_id
+       AND substr(pbc.cutoff_from_date, 1, 7) = :month
+     ORDER BY pbc.cutoff_from_date DESC, pbc.id DESC'
+);
+$cutStmt->execute(['project_id' => $projectId, 'month' => $month]);
+$cuts = $cutStmt->fetchAll();
+
+$cutsByDate = [];
+foreach ($cuts as $cut) {
+    $cutsByDate[$cut['cutoff_from_date']][] = $cut;
+}
 
 if (($_GET['export'] ?? '') === 'csv') {
     $safeProject = preg_replace('/[^a-zA-Z0-9_-]+/', '-', (string) $project['name']);
@@ -107,10 +153,51 @@ render_header('Admin - Baustellendetails');
 </div>
 
 <div class="card">
+    <h3>Abrechnungs-Schnitt setzen</h3>
+    <form method="post" class="grid">
+        <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>">
+        <div><label>Datum ab wann der Schnitt ist</label><input type="date" name="cutoff_from_date" required></div>
+        <div><label>Rechnungsnummer</label><input type="text" name="invoice_number" required></div>
+        <div style="align-self:end"><button type="submit">Schnitt speichern</button></div>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Abrechnungsschnitte im Monat</h3>
+    <?php if (count($cuts) > 0): ?>
+        <table>
+            <tr><th>Datum ab wann der Schnitt ist</th><th>Datum wann der Schnitt eingetragen wurde</th><th>Rechnungsnummer</th><th>Eingetragen von</th></tr>
+            <?php foreach ($cuts as $cut): ?>
+                <tr class="billing-cut-row">
+                    <td><?= h($cut['cutoff_from_date']) ?></td>
+                    <td><?= h($cut['created_at']) ?></td>
+                    <td><?= h($cut['invoice_number']) ?></td>
+                    <td><?= h($cut['created_by_name']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    <?php else: ?>
+        <p class="small">Für diesen Monat wurde noch kein Abrechnungs-Schnitt eingetragen.</p>
+    <?php endif; ?>
+</div>
+
+<div class="card">
     <h3>Einzelne Einträge</h3>
     <table>
         <tr><th>Datum</th><th>Benutzer</th><th>Von</th><th>Bis</th><th>Pause</th><th>Notiz</th><th>Erfasst von</th><th>Stunden</th></tr>
         <?php foreach ($entries as $entry): ?>
+            <?php if (isset($cutsByDate[$entry['work_date']])): ?>
+                <?php foreach ($cutsByDate[$entry['work_date']] as $cut): ?>
+                    <tr class="billing-cut-row">
+                        <td colspan="8">
+                            <strong>Abrechnungsschnitt ab <?= h($cut['cutoff_from_date']) ?></strong>
+                            · Eingetragen am <?= h($cut['created_at']) ?>
+                            · Rechnungsnummer: <?= h($cut['invoice_number']) ?>
+                            · Eingetragen von <?= h($cut['created_by_name']) ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
             <?php $minutes = max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']); ?>
             <tr>
                 <td><?= h($entry['work_date']) ?></td>

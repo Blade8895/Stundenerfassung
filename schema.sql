@@ -38,3 +38,14 @@ CREATE TABLE time_entries (
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE project_billing_cuts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    cutoff_from_date TEXT NOT NULL,
+    invoice_number TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    created_by_user_id INTEGER NOT NULL,
+    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
