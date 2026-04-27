@@ -32,4 +32,4 @@ try {
     flash('error', 'Fehler beim Speichern der Zuweisung.');
 }
 
-header('Location: admin_projects.php?user_id=' . $userId);
+header('Location: admin_projects.php');

@@ -51,3 +51,8 @@ select{-webkit-appearance:menulist;appearance:menulist;min-height:38px}
 .calendar-day--has-entry{background:#bfeec8;border-color:#4db56a}
 .calendar-day--missing-entry{background:#f7c3bf;border-color:#d4554f}
 .calendar-day--has-entry .calendar-day-number,.calendar-day--missing-entry .calendar-day-number{color:#111}
+
+.project-assignment-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.project-assignment-card{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;background:var(--input);margin:0}
+.project-assignment-card.is-selected{background:#daf4df;border-color:#3ea85b}
+.project-assignment-checkbox{width:auto;margin:0}
