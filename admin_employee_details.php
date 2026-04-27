@@ -35,9 +35,20 @@ $entryStmt->execute(['user_id' => $userId, 'month' => $month]);
 $entries = $entryStmt->fetchAll();
 
 $totalMinutes = 0;
+$entryDates = [];
 foreach ($entries as $entry) {
     $totalMinutes += max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']);
+    $entryDates[$entry['work_date']] = true;
 }
+
+$monthStart = DateTimeImmutable::createFromFormat('Y-m-d', $month . '-01');
+if (!$monthStart) {
+    $monthStart = new DateTimeImmutable(date('Y-m-01'));
+}
+$monthEnd = $monthStart->modify('last day of this month');
+$calendarStart = $monthStart->modify('-' . ((int) $monthStart->format('N') - 1) . ' days');
+$calendarEnd = $monthEnd->modify('+' . (7 - (int) $monthEnd->format('N')) . ' days');
+$today = new DateTimeImmutable('today');
 
 render_header('Admin - Benutzerdetails');
 ?>
@@ -51,6 +62,39 @@ render_header('Admin - Benutzerdetails');
         <div style="align-self:end"><a class="btn" href="admin_totals.php?month=<?= h($month) ?>">Zurück zu Gesamtstunden</a></div>
     </form>
     <p><strong>Gesamtstunden im Monat:</strong> <?= h(format_hours($totalMinutes / 60)) ?></p>
+</div>
+
+<div class="card">
+    <h3>Kalenderübersicht</h3>
+    <div class="calendar-grid">
+        <?php foreach (['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as $weekday): ?>
+            <div class="calendar-weekday"><?= h($weekday) ?></div>
+        <?php endforeach; ?>
+
+        <?php for ($day = $calendarStart; $day <= $calendarEnd; $day = $day->modify('+1 day')): ?>
+            <?php
+            $dayIso = $day->format('Y-m-d');
+            $isCurrentMonth = $day->format('Y-m') === $month;
+            $hasEntry = isset($entryDates[$dayIso]);
+            $isWeekend = in_array((int) $day->format('N'), [6, 7], true);
+            $isPast = $day < $today;
+            $dayClass = ['calendar-day'];
+
+            if (!$isCurrentMonth) {
+                $dayClass[] = 'calendar-day--outside';
+            }
+
+            if ($hasEntry) {
+                $dayClass[] = 'calendar-day--has-entry';
+            } elseif ($isCurrentMonth && $isPast && !$isWeekend) {
+                $dayClass[] = 'calendar-day--missing-entry';
+            }
+            ?>
+            <div class="<?= h(implode(' ', $dayClass)) ?>">
+                <span class="calendar-day-number"><?= h($day->format('j')) ?></span>
+            </div>
+        <?php endfor; ?>
+    </div>
 </div>
 
 <div class="card">
