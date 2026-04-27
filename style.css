@@ -42,3 +42,11 @@ th,td{border:1px solid var(--border);padding:8px;font-size:14px;text-align:left}
 
 /* Safari/IOS konsistente Select-Darstellung */
 select{-webkit-appearance:menulist;appearance:menulist;min-height:38px}
+
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.calendar-weekday{font-weight:bold;font-size:13px;text-align:center;padding:6px 4px;color:var(--muted)}
+.calendar-day{min-height:62px;border:1px solid var(--border);border-radius:8px;padding:6px;background:var(--input);display:flex;align-items:flex-start;justify-content:flex-end}
+.calendar-day-number{font-size:13px;font-weight:bold}
+.calendar-day--outside{opacity:.45}
+.calendar-day--has-entry{background:#daf4df;border-color:#89d697}
+.calendar-day--missing-entry{background:#fce3e2;border-color:#e58d87}
