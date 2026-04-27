@@ -32,13 +32,14 @@ if ($duration <= 0 || $break >= $duration) {
     exit;
 }
 
-$requiresAssignment = !$isAdmin || $targetUserId === (int) $user['id'];
-$projectStmt = db()->prepare('SELECT COUNT(*) AS c FROM user_projects WHERE user_id = :user_id AND project_id = :project_id');
-$projectStmt->execute(['user_id' => $targetUserId, 'project_id' => $projectId]);
-if ($requiresAssignment && (int) $projectStmt->fetch()['c'] === 0) {
-    flash('error', 'Mitarbeiter ist dieser Baustelle nicht zugewiesen.');
-    header('Location: ' . ($isAdmin ? 'admin_time_entry.php' : 'dashboard.php'));
-    exit;
+if (!$isAdmin) {
+    $projectStmt = db()->prepare('SELECT COUNT(*) AS c FROM user_projects WHERE user_id = :user_id AND project_id = :project_id');
+    $projectStmt->execute(['user_id' => $targetUserId, 'project_id' => $projectId]);
+    if ((int) $projectStmt->fetch()['c'] === 0) {
+        flash('error', 'Mitarbeiter ist dieser Baustelle nicht zugewiesen.');
+        header('Location: dashboard.php');
+        exit;
+    }
 }
 
 $overlapStmt = db()->prepare(

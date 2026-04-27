@@ -88,9 +88,13 @@ render_header('Admin - Baustellen');
         <form method="post" action="admin_assign_projects.php">
             <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>">
             <input type="hidden" name="user_id" value="<?= $selectedUserId ?>">
-            <div class="grid">
+            <div class="project-assignment-grid">
                 <?php foreach ($projects as $project): ?>
-                    <label><input type="checkbox" name="project_ids[]" value="<?= (int) $project['id'] ?>" <?= in_array((int) $project['id'], $assignments, true) ? 'checked' : '' ?>> <?= h('#' . $project['id'] . ' - ' . $project['name']) ?></label>
+                    <?php $isChecked = in_array((int) $project['id'], $assignments, true); ?>
+                    <label class="project-assignment-card <?= $isChecked ? 'is-selected' : '' ?>">
+                        <input class="project-assignment-checkbox" type="checkbox" name="project_ids[]" value="<?= (int) $project['id'] ?>" <?= $isChecked ? 'checked' : '' ?>>
+                        <span><?= h('#' . $project['id'] . ' - ' . $project['name']) ?></span>
+                    </label>
                 <?php endforeach; ?>
             </div>
             <p><button type="submit">Zuweisung speichern</button></p>
@@ -130,4 +134,20 @@ render_header('Admin - Baustellen');
         <?php endforeach; ?>
     </table>
 </div>
+<script>
+(function() {
+    var cards = document.querySelectorAll('.project-assignment-card');
+    cards.forEach(function(card) {
+        var checkbox = card.querySelector('.project-assignment-checkbox');
+        if (!checkbox) return;
+
+        function syncSelectedState() {
+            card.classList.toggle('is-selected', checkbox.checked);
+        }
+
+        checkbox.addEventListener('change', syncSelectedState);
+        syncSelectedState();
+    });
+})();
+</script>
 <?php render_footer(); ?>
