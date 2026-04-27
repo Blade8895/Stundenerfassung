@@ -185,8 +185,9 @@ render_header('Admin - Baustellendetails');
     <h3>Einzelne Einträge</h3>
     <table>
         <tr><th>Datum</th><th>Benutzer</th><th>Von</th><th>Bis</th><th>Pause</th><th>Notiz</th><th>Erfasst von</th><th>Stunden</th></tr>
+        <?php $renderedCutDates = []; ?>
         <?php foreach ($entries as $entry): ?>
-            <?php if (isset($cutsByDate[$entry['work_date']])): ?>
+            <?php if (isset($cutsByDate[$entry['work_date']]) && !isset($renderedCutDates[$entry['work_date']])): ?>
                 <?php foreach ($cutsByDate[$entry['work_date']] as $cut): ?>
                     <tr class="billing-cut-row">
                         <td colspan="8">
@@ -197,6 +198,7 @@ render_header('Admin - Baustellendetails');
                         </td>
                     </tr>
                 <?php endforeach; ?>
+                <?php $renderedCutDates[$entry['work_date']] = true; ?>
             <?php endif; ?>
             <?php $minutes = max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']); ?>
             <tr>
