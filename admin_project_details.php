@@ -36,26 +36,47 @@ if (!$project) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
 
-    $cutoffFromDate = trim($_POST['cutoff_from_date'] ?? '');
-    $invoiceNumber = trim($_POST['invoice_number'] ?? '');
+    $action = trim($_POST['action'] ?? 'create_cut');
 
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $cutoffFromDate)) {
-        flash('error', 'Bitte ein gültiges Schnitt-Datum (JJJJ-MM-TT) angeben.');
-    } elseif ($invoiceNumber === '') {
-        flash('error', 'Bitte eine Rechnungsnummer angeben.');
+    if ($action === 'delete_cut') {
+        $cutId = (int) ($_POST['cut_id'] ?? 0);
+        if ($cutId <= 0) {
+            flash('error', 'Ungültiger Schnitt.');
+        } else {
+            $deleteStmt = db()->prepare('DELETE FROM project_billing_cuts WHERE id = :id AND project_id = :project_id');
+            $deleteStmt->execute([
+                'id' => $cutId,
+                'project_id' => $projectId,
+            ]);
+
+            if ($deleteStmt->rowCount() > 0) {
+                flash('success', 'Abrechnungs-Schnitt wurde gelöscht.');
+            } else {
+                flash('error', 'Schnitt konnte nicht gelöscht werden.');
+            }
+        }
     } else {
-        $cutStmt = db()->prepare(
-            'INSERT INTO project_billing_cuts (project_id, cutoff_from_date, invoice_number, created_at, created_by_user_id)
-             VALUES (:project_id, :cutoff_from_date, :invoice_number, :created_at, :created_by_user_id)'
-        );
-        $cutStmt->execute([
-            'project_id' => $projectId,
-            'cutoff_from_date' => $cutoffFromDate,
-            'invoice_number' => $invoiceNumber,
-            'created_at' => now(),
-            'created_by_user_id' => (int) current_user()['id'],
-        ]);
-        flash('success', 'Abrechnungs-Schnitt wurde gespeichert.');
+        $cutoffFromDate = trim($_POST['cutoff_from_date'] ?? '');
+        $invoiceNumber = trim($_POST['invoice_number'] ?? '');
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $cutoffFromDate)) {
+            flash('error', 'Bitte ein gültiges Schnitt-Datum (JJJJ-MM-TT) angeben.');
+        } elseif ($invoiceNumber === '') {
+            flash('error', 'Bitte eine Rechnungsnummer angeben.');
+        } else {
+            $cutStmt = db()->prepare(
+                'INSERT INTO project_billing_cuts (project_id, cutoff_from_date, invoice_number, created_at, created_by_user_id)
+                 VALUES (:project_id, :cutoff_from_date, :invoice_number, :created_at, :created_by_user_id)'
+            );
+            $cutStmt->execute([
+                'project_id' => $projectId,
+                'cutoff_from_date' => $cutoffFromDate,
+                'invoice_number' => $invoiceNumber,
+                'created_at' => now(),
+                'created_by_user_id' => (int) current_user()['id'],
+            ]);
+            flash('success', 'Abrechnungs-Schnitt wurde gespeichert.');
+        }
     }
 
     $redirectQuery = http_build_query(array_merge($backParams, ['project_id' => $projectId, 'month' => $month]));
@@ -91,6 +112,11 @@ $cuts = $cutStmt->fetchAll();
 $cutsByDate = [];
 foreach ($cuts as $cut) {
     $cutsByDate[$cut['cutoff_from_date']][] = $cut;
+}
+
+$entryDates = [];
+foreach ($entries as $entry) {
+    $entryDates[$entry['work_date']] = true;
 }
 
 if (($_GET['export'] ?? '') === 'csv') {
@@ -166,13 +192,21 @@ render_header('Admin - Baustellendetails');
     <h3>Abrechnungsschnitte im Monat</h3>
     <?php if (count($cuts) > 0): ?>
         <table>
-            <tr><th>Datum ab wann der Schnitt ist</th><th>Datum wann der Schnitt eingetragen wurde</th><th>Rechnungsnummer</th><th>Eingetragen von</th></tr>
+            <tr><th>Datum ab wann der Schnitt ist</th><th>Datum wann der Schnitt eingetragen wurde</th><th>Rechnungsnummer</th><th>Eingetragen von</th><th></th></tr>
             <?php foreach ($cuts as $cut): ?>
                 <tr class="billing-cut-row">
                     <td><?= h($cut['cutoff_from_date']) ?></td>
                     <td><?= h($cut['created_at']) ?></td>
                     <td><?= h($cut['invoice_number']) ?></td>
                     <td><?= h($cut['created_by_name']) ?></td>
+                    <td style="width:1%;white-space:nowrap">
+                        <form method="post" onsubmit="return confirm('Diesen Schnitt wirklich löschen?');" style="margin:0">
+                            <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>">
+                            <input type="hidden" name="action" value="delete_cut">
+                            <input type="hidden" name="cut_id" value="<?= (int) $cut['id'] ?>">
+                            <button type="submit" class="btn-danger" title="Schnitt löschen" aria-label="Schnitt löschen">X</button>
+                        </form>
+                    </td>
                 </tr>
             <?php endforeach; ?>
         </table>
@@ -186,6 +220,21 @@ render_header('Admin - Baustellendetails');
     <table>
         <tr><th>Datum</th><th>Benutzer</th><th>Von</th><th>Bis</th><th>Pause</th><th>Notiz</th><th>Erfasst von</th><th>Stunden</th></tr>
         <?php $renderedCutDates = []; ?>
+        <?php foreach ($cuts as $cut): ?>
+            <?php if (!isset($entryDates[$cut['cutoff_from_date']])): ?>
+                <?php if (!isset($renderedCutDates[$cut['cutoff_from_date']])): ?>
+                    <tr class="billing-cut-row">
+                        <td colspan="8">
+                            <strong>Abrechnungsschnitt ab <?= h($cut['cutoff_from_date']) ?></strong>
+                            · Eingetragen am <?= h($cut['created_at']) ?>
+                            · Rechnungsnummer: <?= h($cut['invoice_number']) ?>
+                            · Eingetragen von <?= h($cut['created_by_name']) ?>
+                        </td>
+                    </tr>
+                    <?php $renderedCutDates[$cut['cutoff_from_date']] = true; ?>
+                <?php endif; ?>
+            <?php endif; ?>
+        <?php endforeach; ?>
         <?php foreach ($entries as $entry): ?>
             <?php if (isset($cutsByDate[$entry['work_date']]) && !isset($renderedCutDates[$entry['work_date']])): ?>
                 <?php foreach ($cutsByDate[$entry['work_date']] as $cut): ?>
