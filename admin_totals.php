@@ -22,6 +22,8 @@ $stmt->execute(['month' => $month]);
 $totals = $stmt->fetchAll();
 
 $monthEnd = $month . '-31';
+$today = date('Y-m-d');
+$cumulativeCutoffDate = $monthEnd < $today ? $monthEnd : $today;
 
 foreach ($totals as &$row) {
     $userId = (int) $row['id'];
@@ -30,9 +32,9 @@ foreach ($totals as &$row) {
     $workAllStmt = db()->prepare(
         'SELECT te.work_date, te.start_time, te.end_time, te.break_minutes
          FROM time_entries te
-         WHERE te.user_id = :user_id AND te.work_date <= :month_end'
+         WHERE te.user_id = :user_id AND te.work_date <= :cutoff_date'
     );
-    $workAllStmt->execute(['user_id' => $userId, 'month_end' => $monthEnd]);
+    $workAllStmt->execute(['user_id' => $userId, 'cutoff_date' => $cumulativeCutoffDate]);
     $allEntries = $workAllStmt->fetchAll();
 
     $totalWorkedMinutes = 0;
@@ -43,15 +45,21 @@ foreach ($totals as &$row) {
     $adjAllStmt = db()->prepare(
         'SELECT COALESCE(SUM(minutes_delta), 0) AS adjustment_minutes
          FROM overtime_adjustments
-         WHERE user_id = :user_id AND adjustment_date <= :month_end'
+         WHERE user_id = :user_id AND adjustment_date <= :cutoff_date'
     );
-    $adjAllStmt->execute(['user_id' => $userId, 'month_end' => $monthEnd]);
+    $adjAllStmt->execute(['user_id' => $userId, 'cutoff_date' => $cumulativeCutoffDate]);
     $totalAdjustmentMinutes = (int) ($adjAllStmt->fetch()['adjustment_minutes'] ?? 0);
 
     $startMonth = new DateTime(substr((string) $row['created_at'], 0, 7) . '-01');
-    $endMonth = new DateTime($month . '-01');
+    $endMonth = new DateTime(substr($cumulativeCutoffDate, 0, 7) . '-01');
     $totalTargetMinutes = 0;
     for ($cursor = clone $startMonth; $cursor <= $endMonth; $cursor->modify('+1 month')) {
+        if ($cursor->format('Y-m') === substr($cumulativeCutoffDate, 0, 7)) {
+            $currentDayInMonth = (int) substr($cumulativeCutoffDate, 8, 2);
+            $totalTargetMinutes += (int) round(($weeklyMinutes / 7) * $currentDayInMonth);
+            continue;
+        }
+
         $totalTargetMinutes += (int) round(($weeklyMinutes / 7) * (int) $cursor->format('t'));
     }
 
