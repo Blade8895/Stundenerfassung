@@ -29,6 +29,7 @@ $formData = [
     'break_minutes' => $entryForEdit['break_minutes'] ?? 0,
     'project_id' => $entryForEdit['project_id'] ?? '',
     'notes' => $entryForEdit['notes'] ?? '',
+    'entry_type' => 'work',
 ];
 
 [$startHour, $startMinute] = explode(':', $formData['start_time']);
@@ -97,6 +98,12 @@ render_header('Admin - Stunden nachtragen');
                 <?php endforeach; ?>
             </select></div>
             <div><label>Notiz</label><input name="notes" maxlength="200" value="<?= h((string) $formData['notes']) ?>"></div>
+            <div><label>Eintragstyp</label>
+                <select name="entry_type">
+                    <option value="work">Arbeitszeit</option>
+                    <option value="overtime_free">Überstundenfrei</option>
+                </select>
+            </div>
         </div>
         <p><button type="submit"><?= $entryForEdit ? 'Änderungen speichern' : 'Nachtragen' ?></button></p>
         <?php if ($entryForEdit): ?>

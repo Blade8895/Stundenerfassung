@@ -233,7 +233,8 @@ function minutes_between(string $start, string $end): int
 
 function format_hours(float $hours): string
 {
-    return number_format($hours, 2, ',', '.') . ' h';
+    $roundedToQuarter = round($hours * 4) / 4;
+    return number_format($roundedToQuarter, 2, ',', '.') . ' h';
 }
 
 function migrate(PDO $pdo): void
@@ -249,7 +250,8 @@ function migrate(PDO $pdo): void
                 password_hash VARCHAR(255) NOT NULL,
                 role ENUM("admin", "employee", "trainee") NOT NULL,
                 active TINYINT(1) NOT NULL DEFAULT 1,
-                created_at DATETIME NOT NULL
+                created_at DATETIME NOT NULL,
+                max_weekly_minutes INT NOT NULL DEFAULT 2400
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
             'CREATE TABLE IF NOT EXISTS projects (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -280,6 +282,20 @@ function migrate(PDO $pdo): void
                 CONSTRAINT fk_time_entries_creator FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
                 INDEX idx_time_entries_user_date (user_id, work_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+            'CREATE TABLE IF NOT EXISTS overtime_adjustments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                adjustment_date DATE NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                minutes_delta INT NOT NULL,
+                notes TEXT NULL,
+                created_by_user_id INT NOT NULL,
+                created_at DATETIME NOT NULL,
+                CONSTRAINT fk_overtime_adj_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                CONSTRAINT fk_overtime_adj_creator FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_overtime_adj_user_date (user_id, adjustment_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
             'CREATE TABLE IF NOT EXISTS project_billing_cuts (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 project_id INT NOT NULL,
@@ -301,7 +317,8 @@ function migrate(PDO $pdo): void
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL CHECK(role IN ("admin", "employee", "trainee")),
                 active INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                max_weekly_minutes INTEGER NOT NULL DEFAULT 2400
             )',
             'CREATE TABLE IF NOT EXISTS projects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -331,6 +348,19 @@ function migrate(PDO $pdo): void
                 FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
             )',
+            'CREATE TABLE IF NOT EXISTS overtime_adjustments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                adjustment_date TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                minutes_delta INTEGER NOT NULL,
+                notes TEXT,
+                created_by_user_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+            )',
             'CREATE TABLE IF NOT EXISTS project_billing_cuts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 project_id INTEGER NOT NULL,
@@ -349,6 +379,24 @@ function migrate(PDO $pdo): void
     }
 
     ensure_supported_roles($pdo, $driver);
+    ensure_max_weekly_minutes_column($pdo, $driver);
+}
+
+function ensure_max_weekly_minutes_column(PDO $pdo, string $driver): void
+{
+    if ($driver === 'mysql') {
+        $pdo->exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS max_weekly_minutes INT NOT NULL DEFAULT 2400');
+        return;
+    }
+
+    $columns = $pdo->query('PRAGMA table_info(users)')->fetchAll();
+    foreach ($columns as $column) {
+        if (($column['name'] ?? '') === 'max_weekly_minutes') {
+            return;
+        }
+    }
+
+    $pdo->exec('ALTER TABLE users ADD COLUMN max_weekly_minutes INTEGER NOT NULL DEFAULT 2400');
 }
 
 function ensure_supported_roles(PDO $pdo, string $driver): void

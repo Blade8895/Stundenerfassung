@@ -2,7 +2,7 @@
 require_once __DIR__ . '/view.php';
 require_admin();
 
-$users = db()->query('SELECT id, name, email, role, active, created_at FROM users ORDER BY role DESC, name')->fetchAll();
+$users = db()->query('SELECT id, name, email, role, active, created_at, max_weekly_minutes FROM users ORDER BY role DESC, name')->fetchAll();
 
 render_header('Admin - Benutzer');
 ?>
@@ -15,6 +15,7 @@ render_header('Admin - Benutzer');
             <div><label>E-Mail</label><input type="email" name="email" required></div>
             <div><label>Passwort</label><input type="password" name="password" minlength="8" required></div>
             <div><label>Rolle</label><select name="role"><option value="employee">Mitarbeiter</option><option value="trainee">Auszubildender</option><option value="admin">Admin</option></select></div>
+            <div><label>Wochenarbeitszeit (h)</label><input type="number" name="max_weekly_hours" min="0" step="0.25" value="40" required></div>
         </div>
         <p><button type="submit">Benutzer speichern</button></p>
     </form>
@@ -23,7 +24,7 @@ render_header('Admin - Benutzer');
 <div class="card">
     <h3>Benutzer bearbeiten</h3>
     <div class="table-wrap"><table>
-        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Passwort</th><th>Angelegt</th><th>Aktion</th></tr>
+        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Wochenarbeitszeit</th><th>Passwort</th><th>Angelegt</th><th>Aktion</th></tr>
         <?php foreach ($users as $user): ?>
             <?php $formId = 'user-form-' . (int) $user['id']; ?>
             <tr>
@@ -37,6 +38,7 @@ render_header('Admin - Benutzer');
                         <option value="admin" <?= $user['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
                     </select>
                 </td>
+                <td><input form="<?= h($formId) ?>" type="number" name="max_weekly_hours" min="0" step="0.25" value="<?= h((string) number_format(((int) $user['max_weekly_minutes']) / 60, 2, '.', '')) ?>" required></td>
                 <td><input form="<?= h($formId) ?>" type="password" name="password" minlength="8" placeholder="leer lassen"></td>
                 <td><?= h($user['created_at']) ?></td>
                 <td>

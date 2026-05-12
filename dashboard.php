@@ -4,6 +4,7 @@ require_login();
 
 $user = current_user();
 $selectedMonth = $_GET['month'] ?? date('Y-m');
+$maxWeeklyMinutes = (int) ($user['max_weekly_minutes'] ?? 2400);
 
 $stmt = db()->prepare(
     'SELECT p.id, p.name FROM projects p
@@ -23,12 +24,64 @@ $listStmt = db()->prepare(
 );
 $listStmt->execute(['user_id' => $user['id'], 'month' => $selectedMonth]);
 $entries = $listStmt->fetchAll();
+$overtimeStmt = db()->prepare(
+    'SELECT COALESCE(SUM(minutes_delta), 0) AS adjustment_minutes
+     FROM overtime_adjustments
+     WHERE user_id = :user_id AND substr(adjustment_date,1,7) = :month'
+);
+$overtimeStmt->execute(['user_id' => $user['id'], 'month' => $selectedMonth]);
+$adjustmentMinutes = (int) ($overtimeStmt->fetch()['adjustment_minutes'] ?? 0);
 
 $totalMinutes = 0;
 foreach ($entries as $entry) {
     $minutes = minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes'];
-    $totalMinutes += max(0, $minutes);
+    $entryMinutes = max(0, $minutes);
+    $totalMinutes += $entryMinutes;
 }
+$monthStart = new DateTime($selectedMonth . '-01');
+$monthEnd = (clone $monthStart)->modify('last day of this month');
+$daysInMonth = (int) $monthEnd->format('j');
+$monthlyTargetMinutes = (int) round(($maxWeeklyMinutes / 7) * $daysInMonth);
+$overtimeMinutes = ($totalMinutes - $monthlyTargetMinutes) + $adjustmentMinutes;
+
+$selectedMonthEnd = $selectedMonth . '-31';
+$today = date('Y-m-d');
+$cumulativeCutoffDate = $selectedMonthEnd < $today ? $selectedMonthEnd : $today;
+$allWorkStmt = db()->prepare(
+    'SELECT te.work_date, te.start_time, te.end_time, te.break_minutes
+     FROM time_entries te
+     WHERE te.user_id = :user_id AND te.work_date <= :cutoff_date'
+);
+$allWorkStmt->execute(['user_id' => $user['id'], 'cutoff_date' => $cumulativeCutoffDate]);
+$allWorkEntries = $allWorkStmt->fetchAll();
+
+$allAdjustmentStmt = db()->prepare(
+    'SELECT COALESCE(SUM(minutes_delta), 0) AS adjustment_minutes
+     FROM overtime_adjustments
+     WHERE user_id = :user_id AND adjustment_date <= :cutoff_date'
+);
+$allAdjustmentStmt->execute(['user_id' => $user['id'], 'cutoff_date' => $cumulativeCutoffDate]);
+$totalAdjustmentMinutes = (int) ($allAdjustmentStmt->fetch()['adjustment_minutes'] ?? 0);
+
+$totalWorkedAllMinutes = 0;
+foreach ($allWorkEntries as $entry) {
+    $totalWorkedAllMinutes += max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']);
+}
+
+$startMonthDate = new DateTime(substr((string) $user['created_at'], 0, 7) . '-01');
+$endMonthDate = new DateTime(substr($cumulativeCutoffDate, 0, 7) . '-01');
+$totalTargetAllMinutes = 0;
+for ($cursor = clone $startMonthDate; $cursor <= $endMonthDate; $cursor->modify('+1 month')) {
+    $dim = (int) $cursor->format('t');
+    if ($cursor->format('Y-m') === substr($cumulativeCutoffDate, 0, 7)) {
+        $currentDayInMonth = (int) substr($cumulativeCutoffDate, 8, 2);
+        $totalTargetAllMinutes += (int) round(($maxWeeklyMinutes / 7) * $currentDayInMonth);
+        continue;
+    }
+
+    $totalTargetAllMinutes += (int) round(($maxWeeklyMinutes / 7) * $dim);
+}
+$totalOvertimeMinutes = ($totalWorkedAllMinutes - $totalTargetAllMinutes) + $totalAdjustmentMinutes;
 
 $hours = range(0, 23);
 $quarterMinutes = ['00', '15', '30', '45'];
@@ -85,6 +138,9 @@ render_header('Dashboard');
         <div style="align-self:end"><button type="submit">Filtern</button></div>
     </form>
     <p><strong>Gesamtstunden:</strong> <?= h(format_hours($totalMinutes / 60)) ?></p>
+    <p><strong>Sollstunden (Monat):</strong> <?= h(format_hours($monthlyTargetMinutes / 60)) ?> (Basis: <?= h(format_hours($maxWeeklyMinutes / 60)) ?>/Woche)</p>
+    <p><strong>Überstunden:</strong> <?= h(format_hours($overtimeMinutes / 60)) ?> (inkl. Überstundenfrei)</p>
+    <p><strong>Gesamt-Überstunden (bis inkl. <?= h($cumulativeCutoffDate) ?>):</strong> <?= h(format_hours($totalOvertimeMinutes / 60)) ?></p>
     <div class="table-wrap"><table>
         <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Pause</th><th>Baustelle</th><th>Notiz</th><th>Stunden</th></tr>
         <?php foreach ($entries as $entry): ?>

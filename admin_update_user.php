@@ -8,8 +8,9 @@ $name = trim($_POST['name'] ?? '');
 $email = strtolower_safe(trim($_POST['email'] ?? ''));
 $password = $_POST['password'] ?? '';
 $role = $_POST['role'] ?? 'employee';
+$maxWeeklyHours = (float) ($_POST['max_weekly_hours'] ?? 40);
 
-if ($id <= 0 || $name === '' || $email === '' || !in_array($role, ['admin', 'employee', 'trainee'], true)) {
+if ($id <= 0 || $name === '' || $email === '' || !in_array($role, ['admin', 'employee', 'trainee'], true) || $maxWeeklyHours < 0) {
     flash('error', 'Ungültige Eingaben beim Benutzer-Update.');
     header('Location: admin_users.php');
     exit;
@@ -35,20 +36,22 @@ try {
     }
 
     if ($password === '') {
-        $updateStmt = db()->prepare('UPDATE users SET name = :name, email = :email, role = :role WHERE id = :id');
+        $updateStmt = db()->prepare('UPDATE users SET name = :name, email = :email, role = :role, max_weekly_minutes = :max_weekly_minutes WHERE id = :id');
         $updateStmt->execute([
             'id' => $id,
             'name' => $name,
             'email' => $email,
             'role' => $role,
+            'max_weekly_minutes' => (int) round($maxWeeklyHours * 60),
         ]);
     } else {
-        $updateStmt = db()->prepare('UPDATE users SET name = :name, email = :email, role = :role, password_hash = :password_hash WHERE id = :id');
+        $updateStmt = db()->prepare('UPDATE users SET name = :name, email = :email, role = :role, max_weekly_minutes = :max_weekly_minutes, password_hash = :password_hash WHERE id = :id');
         $updateStmt->execute([
             'id' => $id,
             'name' => $name,
             'email' => $email,
             'role' => $role,
+            'max_weekly_minutes' => (int) round($maxWeeklyHours * 60),
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
         ]);
     }

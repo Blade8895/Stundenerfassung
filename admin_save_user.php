@@ -7,21 +7,23 @@ $name = trim($_POST['name'] ?? '');
 $email = strtolower_safe(trim($_POST['email'] ?? ''));
 $password = $_POST['password'] ?? '';
 $role = $_POST['role'] ?? 'employee';
+$maxWeeklyHours = (float) ($_POST['max_weekly_hours'] ?? 40);
 
-if ($name === '' || $email === '' || strlen($password) < 8 || !in_array($role, ['admin', 'employee', 'trainee'], true)) {
+if ($name === '' || $email === '' || strlen($password) < 8 || !in_array($role, ['admin', 'employee', 'trainee'], true) || $maxWeeklyHours < 0) {
     flash('error', 'Ungültige Eingaben beim Benutzer.');
     header('Location: admin_users.php');
     exit;
 }
 
 try {
-    $stmt = db()->prepare('INSERT INTO users(name, email, password_hash, role, active, created_at) VALUES(:name, :email, :password_hash, :role, 1, :created_at)');
+    $stmt = db()->prepare('INSERT INTO users(name, email, password_hash, role, active, created_at, max_weekly_minutes) VALUES(:name, :email, :password_hash, :role, 1, :created_at, :max_weekly_minutes)');
     $stmt->execute([
         'name' => $name,
         'email' => $email,
         'password_hash' => password_hash($password, PASSWORD_DEFAULT),
         'role' => $role,
         'created_at' => now(),
+        'max_weekly_minutes' => (int) round($maxWeeklyHours * 60),
     ]);
     flash('success', 'Benutzer wurde erstellt.');
 } catch (PDOException $e) {
