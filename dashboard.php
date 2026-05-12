@@ -44,6 +44,37 @@ $daysInMonth = (int) $monthEnd->format('j');
 $monthlyTargetMinutes = (int) round(($maxWeeklyMinutes / 7) * $daysInMonth);
 $overtimeMinutes = ($totalMinutes - $monthlyTargetMinutes) + $adjustmentMinutes;
 
+$selectedMonthEnd = $selectedMonth . '-31';
+$allWorkStmt = db()->prepare(
+    'SELECT te.work_date, te.start_time, te.end_time, te.break_minutes
+     FROM time_entries te
+     WHERE te.user_id = :user_id AND te.work_date <= :month_end'
+);
+$allWorkStmt->execute(['user_id' => $user['id'], 'month_end' => $selectedMonthEnd]);
+$allWorkEntries = $allWorkStmt->fetchAll();
+
+$allAdjustmentStmt = db()->prepare(
+    'SELECT COALESCE(SUM(minutes_delta), 0) AS adjustment_minutes
+     FROM overtime_adjustments
+     WHERE user_id = :user_id AND adjustment_date <= :month_end'
+);
+$allAdjustmentStmt->execute(['user_id' => $user['id'], 'month_end' => $selectedMonthEnd]);
+$totalAdjustmentMinutes = (int) ($allAdjustmentStmt->fetch()['adjustment_minutes'] ?? 0);
+
+$totalWorkedAllMinutes = 0;
+foreach ($allWorkEntries as $entry) {
+    $totalWorkedAllMinutes += max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']);
+}
+
+$startMonthDate = new DateTime(substr((string) $user['created_at'], 0, 7) . '-01');
+$endMonthDate = new DateTime($selectedMonth . '-01');
+$totalTargetAllMinutes = 0;
+for ($cursor = clone $startMonthDate; $cursor <= $endMonthDate; $cursor->modify('+1 month')) {
+    $dim = (int) $cursor->format('t');
+    $totalTargetAllMinutes += (int) round(($maxWeeklyMinutes / 7) * $dim);
+}
+$totalOvertimeMinutes = ($totalWorkedAllMinutes - $totalTargetAllMinutes) + $totalAdjustmentMinutes;
+
 $hours = range(0, 23);
 $quarterMinutes = ['00', '15', '30', '45'];
 
@@ -101,6 +132,7 @@ render_header('Dashboard');
     <p><strong>Gesamtstunden:</strong> <?= h(format_hours($totalMinutes / 60)) ?></p>
     <p><strong>Sollstunden (Monat):</strong> <?= h(format_hours($monthlyTargetMinutes / 60)) ?> (Basis: <?= h(format_hours($maxWeeklyMinutes / 60)) ?>/Woche)</p>
     <p><strong>Überstunden:</strong> <?= h(format_hours($overtimeMinutes / 60)) ?> (inkl. Überstundenfrei)</p>
+    <p><strong>Gesamt-Überstunden (bis inkl. <?= h($selectedMonth) ?>):</strong> <?= h(format_hours($totalOvertimeMinutes / 60)) ?></p>
     <div class="table-wrap"><table>
         <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Pause</th><th>Baustelle</th><th>Notiz</th><th>Stunden</th></tr>
         <?php foreach ($entries as $entry): ?>

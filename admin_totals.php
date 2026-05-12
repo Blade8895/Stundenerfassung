@@ -8,7 +8,7 @@ if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
 }
 
 $stmt = db()->prepare(
-    'SELECT u.id, u.name, u.email, u.role,
+    'SELECT u.id, u.name, u.email, u.role, u.max_weekly_minutes, u.created_at,
             COALESCE(SUM((CAST(substr(te.end_time,1,2) AS INTEGER)*60 + CAST(substr(te.end_time,4,2) AS INTEGER)) -
                          (CAST(substr(te.start_time,1,2) AS INTEGER)*60 + CAST(substr(te.start_time,4,2) AS INTEGER)) -
                          te.break_minutes), 0) AS total_minutes
@@ -21,6 +21,45 @@ $stmt = db()->prepare(
 $stmt->execute(['month' => $month]);
 $totals = $stmt->fetchAll();
 
+$monthEnd = $month . '-31';
+
+foreach ($totals as &$row) {
+    $userId = (int) $row['id'];
+    $weeklyMinutes = (int) ($row['max_weekly_minutes'] ?? 2400);
+
+    $workAllStmt = db()->prepare(
+        'SELECT te.work_date, te.start_time, te.end_time, te.break_minutes
+         FROM time_entries te
+         WHERE te.user_id = :user_id AND te.work_date <= :month_end'
+    );
+    $workAllStmt->execute(['user_id' => $userId, 'month_end' => $monthEnd]);
+    $allEntries = $workAllStmt->fetchAll();
+
+    $totalWorkedMinutes = 0;
+    foreach ($allEntries as $entry) {
+        $totalWorkedMinutes += max(0, minutes_between($entry['start_time'], $entry['end_time']) - (int) $entry['break_minutes']);
+    }
+
+    $adjAllStmt = db()->prepare(
+        'SELECT COALESCE(SUM(minutes_delta), 0) AS adjustment_minutes
+         FROM overtime_adjustments
+         WHERE user_id = :user_id AND adjustment_date <= :month_end'
+    );
+    $adjAllStmt->execute(['user_id' => $userId, 'month_end' => $monthEnd]);
+    $totalAdjustmentMinutes = (int) ($adjAllStmt->fetch()['adjustment_minutes'] ?? 0);
+
+    $startMonth = new DateTime(substr((string) $row['created_at'], 0, 7) . '-01');
+    $endMonth = new DateTime($month . '-01');
+    $totalTargetMinutes = 0;
+    for ($cursor = clone $startMonth; $cursor <= $endMonth; $cursor->modify('+1 month')) {
+        $totalTargetMinutes += (int) round(($weeklyMinutes / 7) * (int) $cursor->format('t'));
+    }
+
+    $row['total_overtime_minutes'] = ($totalWorkedMinutes - $totalTargetMinutes) + $totalAdjustmentMinutes;
+}
+unset($row);
+
+
 $roleLabels = [
     'employee' => 'Mitarbeiter',
     'trainee' => 'Auszubildender',
@@ -31,10 +70,10 @@ if (($_GET['export'] ?? '') === 'csv') {
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="gesamtstunden-' . $month . '.csv"');
 
-    echo "Benutzer-ID;Name;E-Mail;Rolle;Monat;Gesamtstunden\n";
+    echo "Benutzer-ID;Name;E-Mail;Rolle;Monat;Gesamtstunden;Gesamt-Überstunden\n";
     foreach ($totals as $row) {
         $hours = number_format(max(0, ((int) $row['total_minutes']) / 60), 2, ',', '');
-        echo (int) $row['id'] . ';"' . str_replace('"', '""', $row['name']) . '";"' . str_replace('"', '""', $row['email']) . '";' . ($roleLabels[$row['role']] ?? $row['role']) . ';' . $month . ';' . $hours . "\n";
+        echo (int) $row['id'] . ';"' . str_replace('"', '""', $row['name']) . '";"' . str_replace('"', '""', $row['email']) . '";' . ($roleLabels[$row['role']] ?? $row['role']) . ';' . $month . ';' . $hours . ';' . number_format(((int) $row['total_overtime_minutes']) / 60, 2, ',', '') . "\n";
     }
     exit;
 }
@@ -108,7 +147,7 @@ render_header('Admin - Gesamtstunden');
     </form>
 
     <table>
-        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Monat</th><th>Gesamtstunden</th><th>Details</th><th>CSV</th></tr>
+        <tr><th>ID</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Monat</th><th>Gesamtstunden</th><th>Gesamt-Überstunden</th><th>Details</th><th>CSV</th></tr>
         <?php foreach ($totals as $row): ?>
             <tr>
                 <td><?= (int) $row['id'] ?></td>
@@ -117,6 +156,7 @@ render_header('Admin - Gesamtstunden');
                 <td><?= h($roleLabels[$row['role']] ?? $row['role']) ?></td>
                 <td><?= h($month) ?></td>
                 <td><?= h(format_hours(max(0, ((int) $row['total_minutes']) / 60))) ?></td>
+                <td><?= h(format_hours(((int) $row['total_overtime_minutes']) / 60)) ?></td>
                 <td><a class="btn" href="admin_employee_details.php?user_id=<?= (int) $row['id'] ?>&month=<?= h($month) ?>">Details</a></td>
                 <td><a class="btn" href="admin_totals.php?month=<?= h($month) ?>&export=user_csv&user_id=<?= (int) $row['id'] ?>">CSV Benutzer</a></td>
             </tr>
