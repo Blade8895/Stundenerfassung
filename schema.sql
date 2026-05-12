@@ -5,7 +5,8 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('admin', 'employee', 'trainee')),
     active INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    max_weekly_minutes INTEGER NOT NULL DEFAULT 2400
 );
 
 CREATE TABLE projects (
@@ -47,5 +48,20 @@ CREATE TABLE project_billing_cuts (
     created_at TEXT NOT NULL,
     created_by_user_id INTEGER NOT NULL,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE overtime_adjustments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    adjustment_date TEXT NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    minutes_delta INTEGER NOT NULL,
+    notes TEXT,
+    created_by_user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
 );

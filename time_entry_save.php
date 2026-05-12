@@ -13,6 +13,7 @@ $end = $_POST['end_time'] ?? '';
 $break = max(0, (int) ($_POST['break_minutes'] ?? 0));
 $projectId = (int) ($_POST['project_id'] ?? 0);
 $notes = trim($_POST['notes'] ?? '');
+$entryType = $_POST['entry_type'] ?? 'work';
 
 if (!$isAdmin) {
     $targetUserId = (int) $user['id'];
@@ -29,6 +30,32 @@ $duration = minutes_between($start, $end);
 if ($duration <= 0 || $break >= $duration) {
     flash('error', 'Bitte gültige Von/Bis-Zeit und Pause eintragen.');
     header('Location: ' . ($isAdmin ? 'admin_time_entry.php' : 'dashboard.php'));
+    exit;
+}
+
+if ($isAdmin && $entryType === 'overtime_free') {
+    if ($duration <= 0) {
+        flash('error', 'Überstundenfrei benötigt eine gültige Zeitspanne.');
+        header('Location: admin_time_entry.php');
+        exit;
+    }
+
+    $adjStmt = db()->prepare(
+        'INSERT INTO overtime_adjustments(user_id, adjustment_date, start_time, end_time, minutes_delta, notes, created_by_user_id, created_at)
+         VALUES(:user_id, :adjustment_date, :start_time, :end_time, :minutes_delta, :notes, :created_by_user_id, :created_at)'
+    );
+    $adjStmt->execute([
+        'user_id' => $targetUserId,
+        'adjustment_date' => $workDate,
+        'start_time' => $start,
+        'end_time' => $end,
+        'minutes_delta' => -$duration,
+        'notes' => $notes,
+        'created_by_user_id' => $user['id'],
+        'created_at' => now(),
+    ]);
+    flash('success', 'Überstundenfrei wurde erfasst.');
+    header('Location: admin_time_entry.php');
     exit;
 }
 
