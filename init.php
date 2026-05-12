@@ -233,7 +233,8 @@ function minutes_between(string $start, string $end): int
 
 function format_hours(float $hours): string
 {
-    return number_format($hours, 2, ',', '.') . ' h';
+    $roundedToQuarter = round($hours * 4) / 4;
+    return number_format($roundedToQuarter, 2, ',', '.') . ' h';
 }
 
 function migrate(PDO $pdo): void
